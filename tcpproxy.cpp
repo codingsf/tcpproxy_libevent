@@ -29,19 +29,19 @@ namespace tcp_proxy
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
          {
-            //std::cout << "In downstream read " << std::endl;
+            std::cout << "In downstream read " << std::endl;
             EvBufferEvent evbuf(bev);
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
             // Copy all the data from the input buffer to the output buffer.
-            //std::cout << "Copying buffer of length "  << evbuf.input().length() << "from downstream to upstream " << std::endl;
+            std::cout << "Copying buffer of length "  << evbuf.input().length() << "from downstream to upstream " << std::endl;
             bridge_inst->upstream_evbuf_.output().append(evbuf.input());
             bridge_inst->downstream_evbuf_.disable(EV_READ);
          }
 
       static void on_downstream_write(struct bufferevent* bev, void* cbarg)
          {
-            //std::cout << "In downstream write " << std::endl;
+            std::cout << "In downstream write " << std::endl;
             EvBufferEvent evbuf(bev);
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
@@ -83,19 +83,19 @@ namespace tcp_proxy
 
       static void on_upstream_read(struct bufferevent* bev, void* cbarg)
          {
-            //std::cout << "In upstream read " << std::endl;
+            std::cout << "In upstream read " << std::endl;
             EvBufferEvent evbuf(bev);
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
 
             // Copy all the data from the input buffer to the output buffer.
-            //std::cout << "Copying buffer of length " << evbuf.input().length() << "from upstream to downstream " << std::endl;
+            std::cout << "Copying buffer of length " << evbuf.input().length() << "from upstream to downstream " << std::endl;
             bridge_inst->downstream_evbuf_.output().append(evbuf.input());
             bridge_inst->upstream_evbuf_.disable(EV_READ);
          }
 
       static void on_upstream_write(struct bufferevent* bev, void* cbarg)
          {
-            //std::cout << "In upstream write " << std::endl;
+            std::cout << "In upstream write " << std::endl;
             EvBufferEvent evbuf(bev);
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
 
@@ -109,18 +109,18 @@ namespace tcp_proxy
 
             if (events & BEV_EVENT_CONNECTED)
             {
-               //std::cout << "Connected to upstream (" << bridge_inst->upstream_server_.toStringFull() << ")" << std::endl;
+               std::cout << "Connected to upstream (" << bridge_inst->upstream_server_.toStringFull() << ")" << std::endl;
                evbuf.setTcpNoDelay();
                //set the call backs for downstream
                if (bridge_inst->downstream_evbuf_.newForSocket(bridge_inst->localhost_fd_, on_downstream_read, on_downstream_write,
                                                                on_downstream_event, (void *)bridge_inst, bridge_inst->evbase_->base()))
                {
-                  bridge_inst->downstream_evbuf_.own(false);
                   bridge_inst->downstream_evbuf_.enable(EV_READ | EV_WRITE);
                   bridge_inst->downstream_evbuf_.setTcpNoDelay();
+                  bridge_inst->downstream_evbuf_.own(false);
                }
             } else if (events & BEV_EVENT_ERROR) {
-               //std::cout << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << " failed" << std::endl;
+               std::cout << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << " failed" << std::endl;
                // Close the upstream connection
                evbuf.own(true);
                evbuf.free();
@@ -177,7 +177,7 @@ namespace tcp_proxy
             {
                try
                {
-                  //std::cout << "Waiting to accept connections" << std::endl;
+                  std::cout << "Waiting to accept connections" << std::endl;
                   listener_.newListener(localhost_address_, onAccept,
                                         (void *)this, evbase_->base());
                   evbase_->loop();
@@ -190,7 +190,7 @@ namespace tcp_proxy
          static void onAccept(struct evconnlistener* listener, evutil_socket_t listener_fd, struct sockaddr* address,
                               int socklen, void* cbarg)
             {
-               //std::cout << __FUNCTION__ << "Asynchronously accepted connections" << std::endl;
+               std::cout << __FUNCTION__ << "Asynchronously accepted connections" << std::endl;
                acceptor *acceptor_inst = static_cast<acceptor *>(cbarg);
                acceptor_inst->bridge_session_ = boost::shared_ptr<bridge>(new bridge(acceptor_inst->evbase_, listener, listener_fd,
                                                                                      acceptor_inst->localhost_address_,
