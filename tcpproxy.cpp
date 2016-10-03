@@ -35,6 +35,7 @@ namespace tcp_proxy
 
             // Copy all the data from the input buffer to the output buffer.
             std::cout << "Copying buffer of length "  << evbuf.input().length() << "from downstream to upstream " << std::endl;
+            std::cout << "Downstream evbuf length = "  << bridge_inst->downstream_evbuf_.input().length() << std::endl;
             bridge_inst->upstream_evbuf_.output().append(evbuf.input());
             bridge_inst->downstream_evbuf_.disable(EV_READ);
          }
@@ -89,6 +90,7 @@ namespace tcp_proxy
 
             // Copy all the data from the input buffer to the output buffer.
             std::cout << "Copying buffer of length " << evbuf.input().length() << "from upstream to downstream " << std::endl;
+            std::cout << "Upstream evbuf length = "  << bridge_inst->upstream_evbuf_.input().length() << std::endl;
             bridge_inst->downstream_evbuf_.output().append(evbuf.input());
             bridge_inst->upstream_evbuf_.disable(EV_READ);
          }
