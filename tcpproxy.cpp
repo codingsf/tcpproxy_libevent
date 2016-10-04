@@ -25,7 +25,9 @@ namespace tcp_proxy
            localhost_fd_(localhost_fd),
            upstream_bytes_read_(0),
            downstream_bytes_read_(0)
-         {}
+         {
+            std::cout << "Bridge constructor: localhost fd = " << localhost_fd_;
+         }
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
          {
