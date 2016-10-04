@@ -248,7 +248,7 @@ void onCtrlC(evutil_socket_t fd, short what, void* arg)
 
 int main(int argc, char* argv[])
 {
-   if (argc != 5)
+   if (argc != 6)
    {
       std::cerr << "usage: tcpproxy <local host ip> <local port> <forward host ip> <forward port> <debug-true/false>" << std::endl;
       return 1;
