@@ -440,6 +440,11 @@ public:
         setsockopt(bufferevent_getfd(mPtr), IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     }
 
+    int getBufEventFd()
+    {
+        return bufferevent_getfd(mPtr);
+    }
+
 protected:
     struct bufferevent* mPtr;
     bool mOwner;
