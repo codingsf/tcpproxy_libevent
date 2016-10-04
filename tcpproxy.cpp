@@ -258,7 +258,7 @@ int main(int argc, char* argv[])
    const unsigned short forward_port = static_cast<unsigned short>(::atoi(argv[4]));
    const std::string local_host      = argv[1];
    const std::string forward_host    = argv[3];
-   debug = boost::lexical_cast<bool>(argv[4]);
+   debug = boost::lexical_cast<bool>(argv[5]);
 
    signal(SIGPIPE, SIG_IGN);
    EvEvent ctrlc;
