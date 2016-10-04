@@ -10,7 +10,7 @@
 
 
 COMPILER         = $(CXX)
-OPTIMIZATION_OPT = -O3
+OPTIMIZATION_OPT = -O0
 OPTIONS          = -pedantic -ansi -Wall -Werror $(OPTIMIZATION_OPT) -g
 PTHREAD          = -lpthread
 LINKER_OPT       = -lstdc++ $(PTHREAD) -lboost_thread -lboost_system -levent
@@ -26,4 +26,4 @@ strip_bin :
 	strip -s tcpproxy
 
 clean:
-	rm -f core *.o *.bak *~ *stackdump *#
+	rm -f tcpproxy core *.o *.bak *~ *stackdump *#

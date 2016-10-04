@@ -124,14 +124,14 @@ namespace tcp_proxy
                   bridge_inst->downstream_evbuf_.own(false);
                   std::cout << "Enabled downstream_evbuf " << std::endl;
                }
-               if (bridge_inst->upstream_evbuf_.newForSocket(bridge_inst->upstream_evbuf_.getBufEventFd(), on_upstream_read, on_upstream_write,
-                                                               on_upstream_event, (void *)bridge_inst, bridge_inst->evbase_->base()))
-               {
-                  bridge_inst->upstream_evbuf_.enable(EV_READ | EV_WRITE);
-                  bridge_inst->upstream_evbuf_.setTcpNoDelay();
-                  bridge_inst->upstream_evbuf_.own(false);
-                  std::cout << "Enabled upstream_evbuf " << std::endl;
-               }
+               // if (bridge_inst->upstream_evbuf_.newForSocket(bridge_inst->upstream_evbuf_.getBufEventFd(), on_upstream_read, on_upstream_write,
+               //                                                 on_upstream_event, (void *)bridge_inst, bridge_inst->evbase_->base()))
+               // {
+               //    bridge_inst->upstream_evbuf_.enable(EV_READ | EV_WRITE);
+               //    bridge_inst->upstream_evbuf_.setTcpNoDelay();
+               //    bridge_inst->upstream_evbuf_.own(false);
+               //    std::cout << "Enabled upstream_evbuf " << std::endl;
+               // }
 
             } else if (events & BEV_EVENT_ERROR) {
                std::cout << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << " failed" << std::endl;
