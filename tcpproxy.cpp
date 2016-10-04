@@ -8,7 +8,9 @@
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
 #include "./lev-master/include/lev.h"
+#include <boost/lexical_cast.hpp>
 
+bool debug = false;
 using namespace lev;
 namespace tcp_proxy
 {
@@ -26,27 +28,33 @@ namespace tcp_proxy
            upstream_bytes_read_(0),
            downstream_bytes_read_(0)
          {
-            std::cout << "Bridge constructor: localhost fd = " << localhost_fd_;
+            if(debug)
+               std::cout << "Bridge constructor: localhost fd = " << localhost_fd_;
          }
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
          {
-            std::cout << "In downstream read ";
+            if(debug)
+               std::cout << "In downstream read ";
             EvBufferEvent evbuf(bev);
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
-            std::cout << "for connection " << bridge_inst->localhost_address_.toStringFull() << "<->"<< bridge_inst->upstream_server_.toStringFull() << std::endl;
+            if(debug)
+               std::cout << "for connection " << bridge_inst->localhost_address_.toStringFull() << "<->"<< bridge_inst->upstream_server_.toStringFull() << std::endl;
 
             // Copy all the data from the input buffer to the output buffer.
-            std::cout << "Copying buffer of length "  << evbuf.input().length() << "from downstream to upstream " << std::endl;
-            std::cout << "Downstream evbuf length = "  << bridge_inst->downstream_evbuf_.input().length() << std::endl;
+            if(debug) {
+               std::cout << "Copying buffer of length "  << evbuf.input().length() << "from downstream to upstream " << std::endl;
+               std::cout << "Downstream evbuf length = "  << bridge_inst->downstream_evbuf_.input().length() << std::endl;
+            }
             bridge_inst->upstream_evbuf_.output().append(evbuf.input());
             bridge_inst->downstream_evbuf_.disable(EV_READ);
          }
 
       static void on_downstream_write(struct bufferevent* bev, void* cbarg)
          {
-            std::cout << "In downstream write " << std::endl;
+            if(debug)
+               std::cout << "In downstream write " << std::endl;
             EvBufferEvent evbuf(bev);
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
@@ -88,20 +96,24 @@ namespace tcp_proxy
 
       static void on_upstream_read(struct bufferevent* bev, void* cbarg)
          {
-            std::cout << "In upstream read " << std::endl;
+            if(debug)
+               std::cout << "In upstream read " << std::endl;
             EvBufferEvent evbuf(bev);
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
 
             // Copy all the data from the input buffer to the output buffer.
-            std::cout << "Copying buffer of length " << evbuf.input().length() << "from upstream to downstream " << std::endl;
-            std::cout << "Upstream evbuf length = "  << bridge_inst->upstream_evbuf_.input().length() << std::endl;
+            if(debug) {
+               std::cout << "Copying buffer of length " << evbuf.input().length() << "from upstream to downstream " << std::endl;
+               std::cout << "Upstream evbuf length = "  << bridge_inst->upstream_evbuf_.input().length() << std::endl;
+            }
             bridge_inst->downstream_evbuf_.output().append(evbuf.input());
             bridge_inst->upstream_evbuf_.disable(EV_READ);
          }
 
       static void on_upstream_write(struct bufferevent* bev, void* cbarg)
          {
-            std::cout << "In upstream write " << std::endl;
+            if(debug)
+               std::cout << "In upstream write " << std::endl;
             EvBufferEvent evbuf(bev);
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
 
@@ -160,7 +172,8 @@ namespace tcp_proxy
                                              on_upstream_event, (void*)this, evbase_->base()))
             {
                std::cout << "Created upstream_eventbuf_ for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull() << std::endl;
-               upstream_evbuf_.enable(EV_READ | EV_WRITE);
+               upstream_evbuf_.disable(EV_READ);
+               upstream_evbuf_.enable(EV_WRITE);
             }
 
             // Connect
@@ -237,7 +250,7 @@ int main(int argc, char* argv[])
 {
    if (argc != 5)
    {
-      std::cerr << "usage: tcpproxy <local host ip> <local port> <forward host ip> <forward port>" << std::endl;
+      std::cerr << "usage: tcpproxy <local host ip> <local port> <forward host ip> <forward port> <debug-true/false>" << std::endl;
       return 1;
    }
    EvBaseLoop evbase;
@@ -245,6 +258,7 @@ int main(int argc, char* argv[])
    const unsigned short forward_port = static_cast<unsigned short>(::atoi(argv[4]));
    const std::string local_host      = argv[1];
    const std::string forward_host    = argv[3];
+   debug = boost::lexical_cast<bool>(argv[4]);
 
    signal(SIGPIPE, SIG_IGN);
    EvEvent ctrlc;
