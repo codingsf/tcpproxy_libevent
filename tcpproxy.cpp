@@ -171,15 +171,13 @@ namespace tcp_proxy
                   bridge_inst->downstream_evbuf_.own(false);
                   std::cout << "Enabled downstream_evbuf " << std::endl;
                }
-               if (bridge_inst->upstream_evbuf_.newForSocket(bridge_inst->upstream_evbuf_.getBufEventFd(), on_upstream_read, on_upstream_write,
-                                                               on_upstream_event, (void *)bridge_inst, bridge_inst->evbase_->base()))
-               {
-                  bridge_inst->upstream_evbuf_.enable(EV_READ | EV_WRITE);
-                  bridge_inst->upstream_evbuf_.setTcpNoDelay();
-                  bridge_inst->upstream_evbuf_.own(false);
-                  std::cout << "Enabled upstream_evbuf " << std::endl;
-               }
 
+               bridge_inst->upstream_evbuf_.set_cb(on_upstream_read, on_upstream_write, on_upstream_event, (void*)bridge_inst);
+               bridge_inst->upstream_evbuf_.enable(EV_READ);
+               bridge_inst->upstream_evbuf_.enable(EV_WRITE);
+               bridge_inst->upstream_evbuf_.setTcpNoDelay();
+               bridge_inst->upstream_evbuf_.own(false);
+               std::cout << "Enabled upstream_evbuf and reset its callbacks" << std::endl;
             } else if (events & BEV_EVENT_ERROR) {
                std::cout << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << " failed" << std::endl;
                // Close the upstream connection
@@ -202,10 +200,12 @@ namespace tcp_proxy
       void start()
          {
             ssplice_pending_bridge_ptrs_.insert(std::pair<IpAddr, bridge*>(upstream_server_,this));
-            if (upstream_evbuf_.newForSocket(-1, NULL, NULL,
+            if (upstream_evbuf_.newForSocket(-1, on_upstream_read, on_upstream_write,
                                              on_upstream_event, (void*)this, evbase_->base()))
             {
                std::cout << "Created upstream_eventbuf_ for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull() << std::endl;
+               upstream_evbuf_.disable(EV_READ);
+               upstream_evbuf_.disable(EV_WRITE);
             }
 
             // Connect

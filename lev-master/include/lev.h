@@ -463,6 +463,12 @@ public:
         return bufferevent_getfd(mPtr);
     }
 
+    void set_cb(bufferevent_data_cb readcb, bufferevent_data_cb writecb,
+                bufferevent_event_cb eventcb, void* cbarg)
+    {
+        bufferevent_setcb(mPtr, readcb, writecb, eventcb, cbarg);
+    }
+
 protected:
     struct bufferevent* mPtr;
     bool mOwner;
