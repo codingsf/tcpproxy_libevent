@@ -34,7 +34,7 @@ namespace tcp_proxy
            downstream_bytes_read_(0)
          {
             if(debug)
-               std::cout << "Bridge constructor: localhost fd = " << localhost_fd_;
+               std::cout << "Bridge: "<< this << "localhost fd = " << localhost_fd_;
          }
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
@@ -132,6 +132,7 @@ namespace tcp_proxy
             socklen_t len = sizeof(struct sockaddr_in);
             //bridge *bridge_inst = static_cast<bridge *>(cbarg);
             int ret = getpeername(evbuf.getBufEventFd(), &sock, &len);
+            std::cout << "upstream event for fd" << evbuf.getBufEventFd() << std::endl;
             if(ret != 0) {
                if(ret == EBADF)
                   std::cerr << "EBADF returned" << std::endl;
@@ -231,6 +232,7 @@ namespace tcp_proxy
       class acceptor
       {
       public:
+         static std::vector<tcp_proxy::bridge*> bridge_instances_;
          acceptor(EvBaseLoop* evbase, const std::string& local_host, unsigned short local_port,
                   const std::string& upstream_host, unsigned short upstream_port)
             : evbase_(evbase), upstream_server_(upstream_host.c_str(), upstream_port),
@@ -241,7 +243,7 @@ namespace tcp_proxy
             {
                try
                {
-                  std::cout << "Waiting to accept connections" << std::endl;
+                  std::cout << "Waiting to accept connections" << std::endl << std::endl;
                   listener_.newListener(localhost_address_, onAccept,
                                         (void *)this, evbase_->base());
                   evbase_->loop();
@@ -254,11 +256,12 @@ namespace tcp_proxy
          static void onAccept(struct evconnlistener* listener, evutil_socket_t listener_fd, struct sockaddr* address,
                               int socklen, void* cbarg)
             {
-               std::cout << __FUNCTION__ << "Asynchronously accepted connections" << std::endl;
+               std::cout << __FUNCTION__ << "Asynchronously accepted connection for fd" << listener_fd << std::endl;
                acceptor *acceptor_inst = static_cast<acceptor *>(cbarg);
                acceptor_inst->bridge_session_ = boost::shared_ptr<bridge>(new bridge(acceptor_inst->evbase_, listener, listener_fd,
                                                                                      acceptor_inst->localhost_address_,
                                                                                      acceptor_inst->upstream_server_));
+               bridge_instances_.push_back(acceptor_inst->bridge_session_.get());
                acceptor_inst->bridge_session_->start();
             }
       private:
@@ -272,6 +275,7 @@ namespace tcp_proxy
 }
 
 std::multimap<IpAddr, tcp_proxy::bridge*, IpAddrCompare> tcp_proxy::bridge::ssplice_pending_bridge_ptrs_;
+std::vector<tcp_proxy::bridge*> tcp_proxy::bridge::acceptor::bridge_instances_;
 void onCtrlC(evutil_socket_t fd, short what, void* arg)
 {
    EvEvent* ev = (EvEvent*)arg;
@@ -307,7 +311,7 @@ int main(int argc, char* argv[])
       tcp_proxy::bridge::acceptor acceptor(&evbase,
                                            local_host, local_port,
                                            forward_host, forward_port);
-      std::cout << "Created acceptor object" << std::endl;
+      std::cout << "Created acceptor object @ " << &acceptor << std::endl;
       acceptor.accept_connections();
    } catch(std::exception& e)
    {
