@@ -64,6 +64,14 @@ public:
         assign(addr, port);
     }
 
+    IpAddr(const struct sockaddr& addr)
+    {
+        mAddr.sa_family = addr.sa_family;
+        ((struct sockaddr_in*)&mAddr)->sin_addr.s_addr = ((struct sockaddr_in*)&addr)->sin_addr.s_addr;
+        ((struct sockaddr_in*)&mAddr)->sin_port = ((struct sockaddr_in*)&addr)->sin_port;
+        mSize = sizeof(struct sockaddr_in);
+    }
+
     inline bool assign(const char* addrandport)
     {
         // [IPv6Address]:port
@@ -126,10 +134,9 @@ public:
         return mSize;
     }
 
-protected:
     struct sockaddr mAddr;
     int mSize;
-
+protected:
     void clear()
     {
         memset(&mAddr, 0, sizeof(mAddr));
@@ -155,6 +162,17 @@ protected:
     }
 };
 
+class IpAddrCompare {
+public:
+    bool operator( )(const IpAddr& ip1, const IpAddr& ip2) const {
+        if (((struct sockaddr_in*)&ip1.mAddr)->sin_addr.s_addr < ((struct sockaddr_in*)&ip2.mAddr)->sin_addr.s_addr)
+            return(true);
+        else if (((struct sockaddr_in*)&ip1.mAddr)->sin_addr.s_addr == ((struct sockaddr_in*)&ip2.mAddr)->sin_addr.s_addr)
+            return(((struct sockaddr_in*)&ip1)->sin_port < ((struct sockaddr_in*)&ip2)->sin_port);
+        else
+            return(false);
+    }
+};
 
 class EvEvent
 {
