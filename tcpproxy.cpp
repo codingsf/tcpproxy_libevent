@@ -18,7 +18,7 @@ extern "C" {
 using namespace lev;
 namespace tcp_proxy
 {
-   bool debug = false;
+   bool debug = true;
    class bridge : public boost::enable_shared_from_this<bridge>
    {
    public:
