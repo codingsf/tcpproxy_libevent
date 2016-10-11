@@ -304,7 +304,7 @@ public:
     {
         if (mOwner && mPtr)
         {
-            std::cout << "In EvBuffer destructor " << std::endl;
+            std::cout << "In EvBuffer free " << std::endl;
             evbuffer_free(mPtr);
         }
         mOwner = false;
@@ -391,7 +391,7 @@ public:
     {
         if (mOwner && mPtr)
         {
-            std::cout << "In EvBufferEvent destructor " << std::endl;
+            std::cout << "In EvBufferEvent free " << std::endl;
             bufferevent_free(mPtr);
         }
         mOwner = false;
