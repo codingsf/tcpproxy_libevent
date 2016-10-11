@@ -35,7 +35,7 @@ extern "C" void event_base_add_virtual(struct event_base *);
 
 namespace lev
 {
-
+bool debug = false;
 class IpAddr;
 class EvBaseLoop;
 class EvEvent;
@@ -184,7 +184,8 @@ public:
     }
     ~EvEvent()
     {
-        std::cout << "In EvEvent destructor " << std::endl;
+        if(debug)
+            std::cout << "In EvEvent destructor " << std::endl;
         free();
     }
 
@@ -192,7 +193,8 @@ public:
     {
         if (mPtr)
         {
-            std::cout << "In EvEvent free " << std::endl;
+            if(debug)
+                std::cout << "In EvEvent free " << std::endl;
             event_free(mPtr);
         }
         mPtr = NULL;
@@ -291,7 +293,8 @@ public:
     }
     ~EvBuffer()
     {
-        std::cout << "In EvBuffer destructor " << std::endl;
+        if(debug)
+            std::cout << "In EvBuffer destructor " << std::endl;
         free();
     }
     void newBuffer()
@@ -304,7 +307,8 @@ public:
     {
         if (mOwner && mPtr)
         {
-            std::cout << "In EvBuffer free " << std::endl;
+            if(debug)
+                std::cout << "In EvBuffer free " << std::endl;
             evbuffer_free(mPtr);
         }
         mOwner = false;
@@ -384,14 +388,16 @@ public:
     }
     ~EvBufferEvent()
     {
-        std::cout << "In EvBufferEvent destructor " << std::endl;
+        if(debug)
+            std::cout << "In EvBufferEvent destructor " << std::endl;
         free();
     }
     void free()
     {
         if (mOwner && mPtr)
         {
-            std::cout << "In EvBufferEvent free " << std::endl;
+            if(debug)
+                std::cout << "In EvBufferEvent free " << std::endl;
             bufferevent_free(mPtr);
         }
         mOwner = false;
@@ -500,14 +506,16 @@ public:
     }
     ~EvConnListener()
     {
-        std::cout << "In EvConnListener destructor " << std::endl;
+        if(debug)
+            std::cout << "In EvConnListener destructor " << std::endl;
         free();
     }
     void free()
     {
         if (mOwner && mPtr)
         {
-            std::cout << "In EvConnListener free " << std::endl;
+            if(debug)
+                std::cout << "In EvConnListener free " << std::endl;
             evconnlistener_free(mPtr);
         }
         mOwner = false;
@@ -568,10 +576,12 @@ public:
     }
     ~EvBaseLoop()
     {
-        std::cout << "In EvBaseLoop destructor " << std::endl;
+        if(debug)
+            std::cout << "In EvBaseLoop destructor " << std::endl;
         if (mBase)
         {
-            std::cout << "In EvBaseLoop free " << std::endl;
+            if(debug)
+                std::cout << "In EvBaseLoop free " << std::endl;
             event_base_free(mBase);
         }
     }
