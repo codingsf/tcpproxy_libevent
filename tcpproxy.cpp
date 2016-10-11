@@ -305,12 +305,12 @@ namespace tcp_proxy
                                                                  acceptor_inst->upstream_server_));
                bridge_instances_.push_back(p);
                if(debug)
-                  std::cout << " ; loc fd = " << listener_fd << "; bridge ptr = " << acceptor_inst->bridge_session_.get() << std::endl;
-               acceptor_inst->bridge_session_->start();
+                  std::cout << " ; loc fd = " << listener_fd << "; bridge ptr = " << p.get() << std::endl;
+               p->start();
             }
          static long num_accepted_connections_;
       private:
-         ptr_type bridge_session_;
+         //ptr_type bridge_session_;
          EvBaseLoop* evbase_;
          IpAddr upstream_server_;
          IpAddr localhost_address_;
