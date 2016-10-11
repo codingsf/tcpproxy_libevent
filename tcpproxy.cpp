@@ -80,7 +80,9 @@ namespace tcp_proxy
             if(debug) {
                std::cout << "Copying buffer of length "  << bridge_inst->downstream_evbuf_.input().length() << "from downstream to upstream " << std::endl;
             }
-            bridge_inst->upstream_evbuf_.output().append(bridge_inst->downstream_evbuf_.input());
+            //bridge_inst->upstream_evbuf_.output().append(bridge_inst->downstream_evbuf_.input());
+            evbuffer_add_buffer(bufferevent_get_output(bridge_inst->upstream_evbuf_.get_mPtr()),
+                                bufferevent_get_input(bridge_inst->downstream_evbuf_.get_mPtr()));
             bridge_inst->downstream_evbuf_.disable(EV_READ);
          }
 
@@ -145,7 +147,9 @@ namespace tcp_proxy
             if(debug) {
                std::cout << "Copying buffer of length " << bridge_inst->upstream_evbuf_.input().length() << "from upstream to downstream " << std::endl;
             }
-            bridge_inst->downstream_evbuf_.output().append(bridge_inst->upstream_evbuf_.input());
+            //bridge_inst->downstream_evbuf_.output().append(bridge_inst->upstream_evbuf_.input());
+            evbuffer_add_buffer(bufferevent_get_output(bridge_inst->downstream_evbuf_.get_mPtr()),
+                                bufferevent_get_input(bridge_inst->upstream_evbuf_.get_mPtr()));
             bridge_inst->upstream_evbuf_.disable(EV_READ);
          }
 
