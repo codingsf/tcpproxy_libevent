@@ -128,10 +128,9 @@ namespace tcp_proxy
       static void on_upstream_event(struct bufferevent* bev, short events, void* cbarg)
          {
             EvBufferEvent evbuf(bev);
-            sockaddr sock;
+            sockaddr rem_sock, loc_sock;
             socklen_t len = sizeof(struct sockaddr_in);
-            //bridge *bridge_inst = static_cast<bridge *>(cbarg);
-            int ret = getpeername(evbuf.getBufEventFd(), &sock, &len);
+            int ret = getpeername(evbuf.getBufEventFd(), &rem_sock, &len);
             std::cout << "upstream event for fd" << evbuf.getBufEventFd() << std::endl;
             if(ret != 0) {
                if(ret == EBADF)
@@ -151,8 +150,28 @@ namespace tcp_proxy
                exit(1);
             }
 
-            IpAddr remote_server(sock);
-            auto bridge_inst_it = ssplice_pending_bridge_ptrs_.find(sock);
+            ret = getsockname(evbuf.getBufEventFd(), &loc_sock, &len);
+            if(ret != 0) {
+               if(ret == EBADF)
+                  std::cerr << "EBADF returned" << std::endl;
+               else if(ret == EFAULT)
+                  std::cerr << "EFAULT returned" << std::endl;
+               else if(ret == EINVAL)
+                  std::cerr << "EINVAL returned" << std::endl;
+               else if(ret == ENOBUFS)
+                  std::cerr << "ENOBUFS returned" << std::endl;
+               else if(ret == ENOTCONN)
+                  std::cerr << "ENOTCONN returned" << std::endl;
+               else if(ret == ENOTSOCK)
+                  std::cerr << "ENOTSOCK returned" << std::endl;
+               else
+                  std::cerr << "Some other error " << std::endl;
+               exit(1);
+            }
+
+            IpAddr remote_server(rem_sock);
+            IpAddr local_server(loc_sock);
+            auto bridge_inst_it = ssplice_pending_bridge_ptrs_.find(rem_sock);
             if(bridge_inst_it == ssplice_pending_bridge_ptrs_.end()) {
                std::cerr << "Could not find a bridge for upstream_server " << remote_server.toStringFull() << std::endl;
                exit(1);
@@ -161,7 +180,9 @@ namespace tcp_proxy
             ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
             if (events & BEV_EVENT_CONNECTED)
             {
-               std::cout << "Connected to upstream (" << bridge_inst->upstream_server_.toStringFull() << ")" << std::endl;
+               std::cout << "Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull();
+               std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst;
+               std::cout << "; downstream fd = " << bridge_inst->downstream_evbuf_.getBufEventFd() << std::endl;
                evbuf.setTcpNoDelay();
                //set the call backs for downstream and upstream
                if (bridge_inst->downstream_evbuf_.newForSocket(bridge_inst->localhost_fd_, on_downstream_read, on_downstream_write,
@@ -204,7 +225,9 @@ namespace tcp_proxy
             if (upstream_evbuf_.newForSocket(-1, on_upstream_read, on_upstream_write,
                                              on_upstream_event, (void*)this, evbase_->base()))
             {
-               std::cout << "Created upstream_eventbuf_ for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull() << std::endl;
+               std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_.get_mPtr() << ") ";
+               std::cout << "for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull();
+               std::cout << "; bridge ptr= " << this << std::endl;
                upstream_evbuf_.disable(EV_READ);
                upstream_evbuf_.disable(EV_WRITE);
             }
@@ -256,14 +279,23 @@ namespace tcp_proxy
          static void onAccept(struct evconnlistener* listener, evutil_socket_t listener_fd, struct sockaddr* address,
                               int socklen, void* cbarg)
             {
-               std::cout << __FUNCTION__ << "Asynchronously accepted connection for fd" << listener_fd << std::endl;
+               sockaddr loc_sock, rem_sock;
+               socklen_t len = sizeof(struct sockaddr_in);
+               getpeername(listener_fd, &rem_sock, &len);
+               getsockname(listener_fd, &loc_sock, &len);
+               IpAddr loc_ep(loc_sock), rem_ep(rem_sock);
+
+               num_accepted_connections_++;
+               std::cout << "Conn. " << num_accepted_connections_ << " " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull();
                acceptor *acceptor_inst = static_cast<acceptor *>(cbarg);
                acceptor_inst->bridge_session_ = boost::shared_ptr<bridge>(new bridge(acceptor_inst->evbase_, listener, listener_fd,
                                                                                      acceptor_inst->localhost_address_,
                                                                                      acceptor_inst->upstream_server_));
                bridge_instances_.push_back(acceptor_inst->bridge_session_.get());
+               std::cout << "; loc fd = " << listener_fd << "; bridge ptr = " << acceptor_inst->bridge_session_.get() << std::endl;
                acceptor_inst->bridge_session_->start();
             }
+         static long num_accepted_connections_;
       private:
          ptr_type bridge_session_;
          EvBaseLoop* evbase_;
@@ -276,6 +308,8 @@ namespace tcp_proxy
 
 std::multimap<IpAddr, tcp_proxy::bridge*, IpAddrCompare> tcp_proxy::bridge::ssplice_pending_bridge_ptrs_;
 std::vector<tcp_proxy::bridge*> tcp_proxy::bridge::acceptor::bridge_instances_;
+long tcp_proxy::bridge::acceptor::num_accepted_connections_ = 0;
+
 void onCtrlC(evutil_socket_t fd, short what, void* arg)
 {
    EvEvent* ev = (EvEvent*)arg;
