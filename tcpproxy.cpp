@@ -300,10 +300,10 @@ namespace tcp_proxy
                num_accepted_connections_++;
                std::cout << "Conn. " << num_accepted_connections_ << " " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull() << " ";
                acceptor *acceptor_inst = static_cast<acceptor *>(cbarg);
-               acceptor_inst->bridge_session_ = boost::shared_ptr<bridge>(new bridge(acceptor_inst->evbase_, listener, listener_fd,
-                                                                                     acceptor_inst->localhost_address_,
-                                                                                     acceptor_inst->upstream_server_));
-               bridge_instances_.push_back(acceptor_inst->bridge_session_);
+               ptr_type p = boost::shared_ptr<bridge>(new bridge(acceptor_inst->evbase_, listener, listener_fd,
+                                                                 acceptor_inst->localhost_address_,
+                                                                 acceptor_inst->upstream_server_));
+               bridge_instances_.push_back(p);
                if(debug)
                   std::cout << " ; loc fd = " << listener_fd << "; bridge ptr = " << acceptor_inst->bridge_session_.get() << std::endl;
                acceptor_inst->bridge_session_->start();
