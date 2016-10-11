@@ -44,8 +44,7 @@ namespace tcp_proxy
          {
             if(debug)
                std::cout << "In bridge destructor " << std::endl;
-            close_upstream();
-            close_downstream();
+            //stop();
          }
 
       void close_upstream()
@@ -105,31 +104,34 @@ namespace tcp_proxy
                // // Close the downstream connection
                // evbuf.own(true);
                // evbuf.free();
-               bridge_inst->close_downstream();
+               //bridge_inst->close_downstream();
                // Close the upstream connection
                // bridge_inst->upstream_evbuf_.own(true);
                // bridge_inst->upstream_evbuf_.free();
-               bridge_inst->close_upstream();
+               //bridge_inst->close_upstream();
+               bridge_inst->stop();
             } else if (events & BEV_EVENT_EOF) {
                std::cerr << "Downstream connection EOF" << std::endl;
                // Close the downstream connection
                // evbuf.own(true);
                // evbuf.free();
-               bridge_inst->close_downstream();
+               // bridge_inst->close_downstream();
                // Close the upstream connection
                // bridge_inst->upstream_evbuf_.own(true);
                // bridge_inst->upstream_evbuf_.free();
-               bridge_inst->close_upstream();
+               // bridge_inst->close_upstream();
+               bridge_inst->stop();
             } else if (events & BEV_EVENT_TIMEOUT) {
                std::cerr << "Error: Downstream connection TIMEDOUT" << std::endl;
                // Close the downstream connection
                // evbuf.own(true);
                // evbuf.free();
-               bridge_inst->close_downstream();
+               // bridge_inst->close_downstream();
                // Close the upstream connection
                // bridge_inst->upstream_evbuf_.own(true);
                // bridge_inst->upstream_evbuf_.free();
-               bridge_inst->close_upstream();
+               // bridge_inst->close_upstream();
+               bridge_inst->stop();
             }
          }
 
@@ -213,34 +215,46 @@ namespace tcp_proxy
                // Close the upstream connection
                // evbuf.own(true);
                // evbuf.free();
-               bridge_inst->close_upstream();
+               // bridge_inst->close_upstream();
                // Close the downstream connection
                // bridge_inst->downstream_evbuf_.own(true);
                // bridge_inst->downstream_evbuf_.free();
-               bridge_inst->close_downstream();
+               // bridge_inst->close_downstream();
+               bridge_inst->stop();
             } else if (events & BEV_EVENT_TIMEOUT) {
                std::cerr << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << "TIMEDOUT" << std::endl;
                // Close the upstream connection
                // evbuf.own(true);
                // evbuf.free();
-               bridge_inst->close_upstream();
+               // bridge_inst->close_upstream();
                // Close the downstream connection
                // bridge_inst->downstream_evbuf_.own(true);
                // bridge_inst->downstream_evbuf_.free();
-               bridge_inst->close_downstream();
+               // bridge_inst->close_downstream();
+               bridge_inst->stop();
             }
          }
 
       void stop() {
          close_upstream();
          close_downstream();
+         // Unref the current bridge instance from global list of bridge instances
+         for(auto it = tcp_proxy::bridge::acceptor::bridge_instances_.begin() ;
+             it < tcp_proxy::bridge::acceptor::bridge_instances_.end(); it++) {
+            // found nth element..print and break.
+            if((*it).get() == this) {
+               std::cout << "Unrefing bridge @ " << this << "from global bridge instance list "<< std::endl;
+               tcp_proxy::bridge::acceptor::bridge_instances_.erase(it);
+               break;
+            }
+         }
       }
 
       void start()
          {
             ptr_type p = wbp_.lock();
             if(!p) {
-               std::cerr << "Error: Could not instntiate shared ptr for bridge" << std::endl;
+               std::cerr << "Error: Could not instantiate shared ptr for bridge" << std::endl;
                stop();
             } else {
                ssplice_pending_bridge_ptrs_.insert(std::pair<IpAddr, ptr_type> (upstream_server_, p));
