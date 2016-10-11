@@ -12,6 +12,7 @@
 
 extern "C" {
 #include <sys/socket.h>
+#include <string.h>
 }
 
 bool debug = false;
@@ -133,39 +134,13 @@ namespace tcp_proxy
             int ret = getpeername(evbuf.getBufEventFd(), &rem_sock, &len);
             std::cout << "upstream event for fd" << evbuf.getBufEventFd() << std::endl;
             if(ret != 0) {
-               if(ret == EBADF)
-                  std::cerr << "EBADF returned" << std::endl;
-               else if(ret == EFAULT)
-                  std::cerr << "EFAULT returned" << std::endl;
-               else if(ret == EINVAL)
-                  std::cerr << "EINVAL returned" << std::endl;
-               else if(ret == ENOBUFS)
-                  std::cerr << "ENOBUFS returned" << std::endl;
-               else if(ret == ENOTCONN)
-                  std::cerr << "ENOTCONN returned" << std::endl;
-               else if(ret == ENOTSOCK)
-                  std::cerr << "ENOTSOCK returned" << std::endl;
-               else
-                  std::cerr << "Some other error " << std::endl;
+               std::cerr << strerror(errno) << std::endl;
                exit(1);
             }
 
             ret = getsockname(evbuf.getBufEventFd(), &loc_sock, &len);
             if(ret != 0) {
-               if(ret == EBADF)
-                  std::cerr << "EBADF returned" << std::endl;
-               else if(ret == EFAULT)
-                  std::cerr << "EFAULT returned" << std::endl;
-               else if(ret == EINVAL)
-                  std::cerr << "EINVAL returned" << std::endl;
-               else if(ret == ENOBUFS)
-                  std::cerr << "ENOBUFS returned" << std::endl;
-               else if(ret == ENOTCONN)
-                  std::cerr << "ENOTCONN returned" << std::endl;
-               else if(ret == ENOTSOCK)
-                  std::cerr << "ENOTSOCK returned" << std::endl;
-               else
-                  std::cerr << "Some other error " << std::endl;
+               std::cerr << strerror(errno) << std::endl;
                exit(1);
             }
 
