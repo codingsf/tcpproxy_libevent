@@ -38,6 +38,11 @@ namespace tcp_proxy
                std::cout << "Bridge: "<< this << "localhost fd = " << localhost_fd_;
          }
 
+      ~bridge()
+         {
+            std::cout << "In bridge destructor " << std::endl;
+         }
+
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
          {
             if(debug)
@@ -230,13 +235,17 @@ namespace tcp_proxy
       class acceptor
       {
       public:
-         static std::vector<tcp_proxy::bridge*> bridge_instances_;
+         static std::vector<ptr_type> bridge_instances_;
          acceptor(EvBaseLoop* evbase, const std::string& local_host, unsigned short local_port,
                   const std::string& upstream_host, unsigned short upstream_port)
             : evbase_(evbase), upstream_server_(upstream_host.c_str(), upstream_port),
               localhost_address_(local_host.c_str(), local_port)
             {}
 
+         ~acceptor()
+            {
+               std::cout << "In acceptor destructor " << std::endl;
+            }
          bool accept_connections()
             {
                try
@@ -266,7 +275,7 @@ namespace tcp_proxy
                acceptor_inst->bridge_session_ = boost::shared_ptr<bridge>(new bridge(acceptor_inst->evbase_, listener, listener_fd,
                                                                                      acceptor_inst->localhost_address_,
                                                                                      acceptor_inst->upstream_server_));
-               bridge_instances_.push_back(acceptor_inst->bridge_session_.get());
+               bridge_instances_.push_back(acceptor_inst->bridge_session_);
                std::cout << " ; loc fd = " << listener_fd << "; bridge ptr = " << acceptor_inst->bridge_session_.get() << std::endl;
                acceptor_inst->bridge_session_->start();
             }
@@ -282,7 +291,7 @@ namespace tcp_proxy
 }
 
 std::multimap<IpAddr, tcp_proxy::bridge*, IpAddrCompare> tcp_proxy::bridge::ssplice_pending_bridge_ptrs_;
-std::vector<tcp_proxy::bridge*> tcp_proxy::bridge::acceptor::bridge_instances_;
+std::vector<boost::shared_ptr<tcp_proxy::bridge> > tcp_proxy::bridge::acceptor::bridge_instances_;
 long tcp_proxy::bridge::acceptor::num_accepted_connections_ = 0;
 
 void onCtrlC(evutil_socket_t fd, short what, void* arg)
