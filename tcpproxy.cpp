@@ -42,6 +42,22 @@ namespace tcp_proxy
          {
             if(debug)
                std::cout << "In bridge destructor " << std::endl;
+            close_upstream();
+            close_downstream();
+         }
+
+      void close_upstream()
+         {
+            // Close the upstream connection
+            upstream_evbuf_.own(true);
+            upstream_evbuf_.free();
+         }
+
+      void close_downstream()
+         {
+            // Close the upstream connection
+            downstream_evbuf_.own(true);
+            downstream_evbuf_.free();
          }
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
@@ -78,28 +94,34 @@ namespace tcp_proxy
             if (events & BEV_EVENT_ERROR)
             {
                std::cerr << "Error: Downstream connection error" << std::endl;
-               // Close the downstream connection
-               evbuf.own(true);
-               evbuf.free();
+               // // Close the downstream connection
+               // evbuf.own(true);
+               // evbuf.free();
+               bridge_inst->close_downstream();
                // Close the upstream connection
-               bridge_inst->upstream_evbuf_.own(true);
-               bridge_inst->upstream_evbuf_.free();
+               // bridge_inst->upstream_evbuf_.own(true);
+               // bridge_inst->upstream_evbuf_.free();
+               bridge_inst->close_upstream();
             } else if (events & BEV_EVENT_EOF) {
                std::cerr << "Downstream connection EOF" << std::endl;
                // Close the downstream connection
-               evbuf.own(true);
-               evbuf.free();
+               // evbuf.own(true);
+               // evbuf.free();
+               bridge_inst->close_downstream();
                // Close the upstream connection
-               bridge_inst->upstream_evbuf_.own(true);
-               bridge_inst->upstream_evbuf_.free();
+               // bridge_inst->upstream_evbuf_.own(true);
+               // bridge_inst->upstream_evbuf_.free();
+               bridge_inst->close_upstream();
             } else if (events & BEV_EVENT_TIMEOUT) {
                std::cerr << "Error: Downstream connection TIMEDOUT" << std::endl;
                // Close the downstream connection
-               evbuf.own(true);
-               evbuf.free();
+               // evbuf.own(true);
+               // evbuf.free();
+               bridge_inst->close_downstream();
                // Close the upstream connection
-               bridge_inst->upstream_evbuf_.own(true);
-               bridge_inst->upstream_evbuf_.free();
+               // bridge_inst->upstream_evbuf_.own(true);
+               // bridge_inst->upstream_evbuf_.free();
+               bridge_inst->close_upstream();
             }
          }
 
@@ -181,19 +203,23 @@ namespace tcp_proxy
             } else if (events & BEV_EVENT_ERROR) {
                std::cout << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << " failed" << std::endl;
                // Close the upstream connection
-               evbuf.own(true);
-               evbuf.free();
+               // evbuf.own(true);
+               // evbuf.free();
+               bridge_inst->close_upstream();
                // Close the downstream connection
-               bridge_inst->downstream_evbuf_.own(true);
-               bridge_inst->downstream_evbuf_.free();
+               // bridge_inst->downstream_evbuf_.own(true);
+               // bridge_inst->downstream_evbuf_.free();
+               bridge_inst->close_downstream();
             } else if (events & BEV_EVENT_TIMEOUT) {
                std::cerr << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << "TIMEDOUT" << std::endl;
                // Close the upstream connection
-               evbuf.own(true);
-               evbuf.free();
+               // evbuf.own(true);
+               // evbuf.free();
+               bridge_inst->close_upstream();
                // Close the downstream connection
-               bridge_inst->downstream_evbuf_.own(true);
-               bridge_inst->downstream_evbuf_.free();
+               // bridge_inst->downstream_evbuf_.own(true);
+               // bridge_inst->downstream_evbuf_.free();
+               bridge_inst->close_downstream();
             }
          }
 
@@ -300,7 +326,9 @@ long tcp_proxy::bridge::acceptor::num_accepted_connections_ = 0;
 void onCtrlC(evutil_socket_t fd, short what, void* arg)
 {
    EvEvent* ev = (EvEvent*)arg;
-   printf("Ctrl-C --exiting loop\n");
+   std::cout << "Ctrl-C --exiting loop" << std::endl;
+   // Destroy all the bridge instances
+   tcp_proxy::bridge::acceptor::bridge_instances_.clear();
    ev->exitLoop();
 }
 
