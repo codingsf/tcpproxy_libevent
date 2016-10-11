@@ -154,7 +154,7 @@ namespace tcp_proxy
             ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
             if (events & BEV_EVENT_CONNECTED)
             {
-               std::cout << "Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull();
+               std::cout << "Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
                if(debug)
                   std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst << std::endl;
                evbuf.setTcpNoDelay();
