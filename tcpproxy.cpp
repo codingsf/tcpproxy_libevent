@@ -22,7 +22,7 @@ namespace tcp_proxy
    class bridge : public boost::enable_shared_from_this<bridge>
    {
    public:
-      static std::multimap<IpAddr, bridge*, IpAddrCompare> ssplice_pending_bridge_ptrs_;
+      static std::multimap<IpAddr, boost::shared_ptr<tcp_proxy::bridge>, IpAddrCompare> ssplice_pending_bridge_ptrs_;
       typedef boost::shared_ptr<bridge> ptr_type;
 
       bridge(EvBaseLoop* evbase, struct evconnlistener* listener,
@@ -49,6 +49,9 @@ namespace tcp_proxy
       void close_upstream()
          {
             // Close the upstream connection
+            if(debug) {
+               std::cout << "In close_upstream for bridge " << this << std::endl;
+            }
             upstream_evbuf_.own(true);
             upstream_evbuf_.free();
          }
@@ -56,6 +59,9 @@ namespace tcp_proxy
       void close_downstream()
          {
             // Close the upstream connection
+            if(debug) {
+               std::cout << "In close_downstream for bridge " << this << std::endl;
+            }
             downstream_evbuf_.own(true);
             downstream_evbuf_.free();
          }
@@ -172,17 +178,17 @@ namespace tcp_proxy
                std::cerr << "Could not find a bridge for upstream_server " << remote_server.toStringFull() << std::endl;
                exit(1);
             }
-            bridge *bridge_inst = bridge_inst_it->second;
+            ptr_type bridge_inst = bridge_inst_it->second;
             ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
             if (events & BEV_EVENT_CONNECTED)
             {
                std::cout << "Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
                if(debug)
-                  std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst << std::endl;
+                  std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst.get() << std::endl;
                evbuf.setTcpNoDelay();
                //set the call backs for downstream and upstream
                if (bridge_inst->downstream_evbuf_.newForSocket(bridge_inst->localhost_fd_, on_downstream_read, on_downstream_write,
-                                                               on_downstream_event, (void *)bridge_inst, bridge_inst->evbase_->base()))
+                                                               on_downstream_event, (void *)bridge_inst.get(), bridge_inst->evbase_->base()))
                {
                   bridge_inst->downstream_evbuf_.enable(EV_READ | EV_WRITE);
                   bridge_inst->downstream_evbuf_.setTcpNoDelay();
@@ -193,7 +199,7 @@ namespace tcp_proxy
                   }
                }
 
-               bridge_inst->upstream_evbuf_.set_cb(on_upstream_read, on_upstream_write, on_upstream_event, (void*)bridge_inst);
+               bridge_inst->upstream_evbuf_.set_cb(on_upstream_read, on_upstream_write, on_upstream_event, (void*)bridge_inst.get());
                bridge_inst->upstream_evbuf_.enable(EV_READ);
                bridge_inst->upstream_evbuf_.enable(EV_WRITE);
                bridge_inst->upstream_evbuf_.setTcpNoDelay();
@@ -225,7 +231,7 @@ namespace tcp_proxy
 
       void start()
          {
-            ssplice_pending_bridge_ptrs_.insert(std::pair<IpAddr, bridge*>(upstream_server_,this));
+            ssplice_pending_bridge_ptrs_.insert(std::pair<IpAddr, ptr_type> (upstream_server_, ptr_type(this)));
             if (upstream_evbuf_.newForSocket(-1, on_upstream_read, on_upstream_write,
                                              on_upstream_event, (void*)this, evbase_->base()))
             {
@@ -319,7 +325,7 @@ namespace tcp_proxy
    };
 }
 
-std::multimap<IpAddr, tcp_proxy::bridge*, IpAddrCompare> tcp_proxy::bridge::ssplice_pending_bridge_ptrs_;
+std::multimap<IpAddr, boost::shared_ptr<tcp_proxy::bridge>, IpAddrCompare> tcp_proxy::bridge::ssplice_pending_bridge_ptrs_;
 std::vector<boost::shared_ptr<tcp_proxy::bridge> > tcp_proxy::bridge::acceptor::bridge_instances_;
 long tcp_proxy::bridge::acceptor::num_accepted_connections_ = 0;
 
@@ -328,7 +334,10 @@ void onCtrlC(evutil_socket_t fd, short what, void* arg)
    EvEvent* ev = (EvEvent*)arg;
    std::cout << "Ctrl-C --exiting loop" << std::endl;
    // Destroy all the bridge instances
-   tcp_proxy::bridge::acceptor::bridge_instances_.clear();
+   tcp_proxy::bridge::acceptor::bridge_instances_.erase(tcp_proxy::bridge::acceptor::bridge_instances_.begin(),
+                                                        tcp_proxy::bridge::acceptor::bridge_instances_.end());
+   tcp_proxy::bridge::ssplice_pending_bridge_ptrs_.erase(tcp_proxy::bridge::ssplice_pending_bridge_ptrs_.begin(),
+                                                         tcp_proxy::bridge::ssplice_pending_bridge_ptrs_.end());
    ev->exitLoop();
 }
 
