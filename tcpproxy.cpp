@@ -24,6 +24,8 @@ namespace tcp_proxy
    public:
       static std::multimap<IpAddr, boost::shared_ptr<tcp_proxy::bridge>, IpAddrCompare> ssplice_pending_bridge_ptrs_;
       typedef boost::shared_ptr<bridge> ptr_type;
+      typedef boost::weak_ptr<bridge> weak_bridge_ptr_type;
+      weak_bridge_ptr_type wbp_;
 
       bridge(EvBaseLoop* evbase, struct evconnlistener* listener,
              evutil_socket_t localhost_fd, IpAddr localhost_address, IpAddr upstream_server)
@@ -229,28 +231,39 @@ namespace tcp_proxy
             }
          }
 
+      void stop() {
+         close_upstream();
+         close_downstream();
+      }
+
       void start()
          {
-            ssplice_pending_bridge_ptrs_.insert(std::pair<IpAddr, ptr_type> (upstream_server_, ptr_type(this)));
-            if (upstream_evbuf_.newForSocket(-1, on_upstream_read, on_upstream_write,
-                                             on_upstream_event, (void*)this, evbase_->base()))
-            {
-               if(debug) {
-                  std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_.get_mPtr() << ") ";
-                  std::cout << "for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull();
-                  std::cout << "; bridge ptr= " << this << std::endl;
-               }
-               upstream_evbuf_.disable(EV_READ);
-               upstream_evbuf_.disable(EV_WRITE);
-            }
-
-            // Connect
-            if (!upstream_evbuf_.connect(upstream_server_))
-            {
-               std::cerr << "Error: Client failed to connect to " << upstream_server_.toStringFull() << std::endl;
+            ptr_type p = wbp_.lock();
+            if(!p) {
+               std::cerr << "Error: Could not instntiate shared ptr for bridge" << std::endl;
+               stop();
             } else {
-               if(debug)
-                  std::cout << "Inititated connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull() << std::endl;
+               ssplice_pending_bridge_ptrs_.insert(std::pair<IpAddr, ptr_type> (upstream_server_, p));
+               if (upstream_evbuf_.newForSocket(-1, on_upstream_read, on_upstream_write,
+                                                on_upstream_event, (void*)this, evbase_->base()))
+               {
+                  if(debug) {
+                     std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_.get_mPtr() << ") ";
+                     std::cout << "for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull();
+                     std::cout << "; bridge ptr= " << this << std::endl;
+                  }
+                  upstream_evbuf_.disable(EV_READ);
+                  upstream_evbuf_.disable(EV_WRITE);
+               }
+
+               // Connect
+               if (!upstream_evbuf_.connect(upstream_server_))
+               {
+                  std::cerr << "Error: Client failed to connect to " << upstream_server_.toStringFull() << std::endl;
+               } else {
+                  if(debug)
+                     std::cout << "Inititated connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull() << std::endl;
+               }
             }
          }
 
@@ -309,6 +322,7 @@ namespace tcp_proxy
                ptr_type p = boost::shared_ptr<bridge>(new bridge(acceptor_inst->evbase_, listener, listener_fd,
                                                                  acceptor_inst->localhost_address_,
                                                                  acceptor_inst->upstream_server_));
+               p->wbp_ = p;
                bridge_instances_.push_back(p);
                if(debug)
                   std::cout << " ; loc fd = " << listener_fd << "; bridge ptr = " << p.get() << std::endl;
