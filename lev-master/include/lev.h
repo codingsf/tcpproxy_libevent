@@ -469,6 +469,11 @@ public:
         bufferevent_setcb(mPtr, readcb, writecb, eventcb, cbarg);
     }
 
+    struct bufferevent* get_mPtr()
+    {
+        return mPtr;
+    }
+
 protected:
     struct bufferevent* mPtr;
     bool mOwner;
