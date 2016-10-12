@@ -168,74 +168,76 @@ namespace tcp_proxy
             socklen_t len = sizeof(struct sockaddr_in);
             int ret = getpeername(evbuf.getBufEventFd(), &rem_sock, &len);
             std::cout << "upstream event for fd" << evbuf.getBufEventFd() << std::endl;
-            if(ret != 0) {
-               std::cerr << strerror(errno) << std::endl;
-               exit(1);
-            }
+            if(ret == 0) {
+               //    std::cerr << strerror(errno) << std::endl;
+               //    exit(1);
+               // }
 
-            ret = getsockname(evbuf.getBufEventFd(), &loc_sock, &len);
-            if(ret != 0) {
-               std::cerr << strerror(errno) << std::endl;
-               exit(1);
-            }
+               ret = getsockname(evbuf.getBufEventFd(), &loc_sock, &len);
+               if(ret == 0) {
+                  //    std::cerr << strerror(errno) << std::endl;
+                  //    exit(1);
+                  // }
 
-            IpAddr remote_server(rem_sock);
-            IpAddr local_server(loc_sock);
-            auto bridge_inst_it = ssplice_pending_bridge_ptrs_.find(rem_sock);
-            if(bridge_inst_it == ssplice_pending_bridge_ptrs_.end()) {
-               std::cerr << "Could not find a bridge for upstream_server " << remote_server.toStringFull() << std::endl;
-               exit(1);
-            }
-            ptr_type bridge_inst = bridge_inst_it->second;
-            ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
-            if (events & BEV_EVENT_CONNECTED)
-            {
-               std::cout << "Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
-               if(debug)
-                  std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst.get() << std::endl;
-               evbuf.setTcpNoDelay();
-               //set the call backs for downstream and upstream
-               if (bridge_inst->downstream_evbuf_.newForSocket(bridge_inst->localhost_fd_, on_downstream_read, on_downstream_write,
-                                                               on_downstream_event, (void *)bridge_inst.get(), bridge_inst->evbase_->base()))
-               {
-                  bridge_inst->downstream_evbuf_.enable(EV_READ | EV_WRITE);
-                  bridge_inst->downstream_evbuf_.setTcpNoDelay();
-                  bridge_inst->downstream_evbuf_.own(false);
-                  if(debug) {
-                     std::cout << "Enabled downstream_evbuf ";
-                     std::cout << "; downstream fd = " << bridge_inst->downstream_evbuf_.getBufEventFd() << std::endl;
+                  IpAddr remote_server(rem_sock);
+                  IpAddr local_server(loc_sock);
+                  auto bridge_inst_it = ssplice_pending_bridge_ptrs_.find(rem_sock);
+                  if(bridge_inst_it == ssplice_pending_bridge_ptrs_.end()) {
+                     std::cerr << "Could not find a bridge for upstream_server " << remote_server.toStringFull() << std::endl;
+                     exit(1);
+                  }
+                  ptr_type bridge_inst = bridge_inst_it->second;
+                  ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
+                  if (events & BEV_EVENT_CONNECTED)
+                  {
+                     std::cout << "Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
+                     if(debug)
+                        std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst.get() << std::endl;
+                     evbuf.setTcpNoDelay();
+                     //set the call backs for downstream and upstream
+                     if (bridge_inst->downstream_evbuf_.newForSocket(bridge_inst->localhost_fd_, on_downstream_read, on_downstream_write,
+                                                                     on_downstream_event, (void *)bridge_inst.get(), bridge_inst->evbase_->base()))
+                     {
+                        bridge_inst->downstream_evbuf_.enable(EV_READ | EV_WRITE);
+                        bridge_inst->downstream_evbuf_.setTcpNoDelay();
+                        bridge_inst->downstream_evbuf_.own(false);
+                        if(debug) {
+                           std::cout << "Enabled downstream_evbuf ";
+                           std::cout << "; downstream fd = " << bridge_inst->downstream_evbuf_.getBufEventFd() << std::endl;
+                        }
+                     }
+
+                     bridge_inst->upstream_evbuf_.set_cb(on_upstream_read, on_upstream_write, on_upstream_event, (void*)bridge_inst.get());
+                     bridge_inst->upstream_evbuf_.enable(EV_READ);
+                     bridge_inst->upstream_evbuf_.enable(EV_WRITE);
+                     bridge_inst->upstream_evbuf_.setTcpNoDelay();
+                     bridge_inst->upstream_evbuf_.own(false);
+                     if(debug)
+                        std::cout << "Enabled upstream_evbuf and reset its callbacks" << std::endl;
+                  } else if (events & BEV_EVENT_ERROR) {
+                     std::cout << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << " failed" << std::endl;
+                     // Close the upstream connection
+                     // evbuf.own(true);
+                     // evbuf.free();
+                     // bridge_inst->close_upstream();
+                     // Close the downstream connection
+                     // bridge_inst->downstream_evbuf_.own(true);
+                     // bridge_inst->downstream_evbuf_.free();
+                     // bridge_inst->close_downstream();
+                     bridge_inst->stop();
+                  } else if (events & BEV_EVENT_TIMEOUT) {
+                     std::cerr << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << "TIMEDOUT" << std::endl;
+                     // Close the upstream connection
+                     // evbuf.own(true);
+                     // evbuf.free();
+                     // bridge_inst->close_upstream();
+                     // Close the downstream connection
+                     // bridge_inst->downstream_evbuf_.own(true);
+                     // bridge_inst->downstream_evbuf_.free();
+                     // bridge_inst->close_downstream();
+                     bridge_inst->stop();
                   }
                }
-
-               bridge_inst->upstream_evbuf_.set_cb(on_upstream_read, on_upstream_write, on_upstream_event, (void*)bridge_inst.get());
-               bridge_inst->upstream_evbuf_.enable(EV_READ);
-               bridge_inst->upstream_evbuf_.enable(EV_WRITE);
-               bridge_inst->upstream_evbuf_.setTcpNoDelay();
-               bridge_inst->upstream_evbuf_.own(false);
-               if(debug)
-                  std::cout << "Enabled upstream_evbuf and reset its callbacks" << std::endl;
-            } else if (events & BEV_EVENT_ERROR) {
-               std::cout << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << " failed" << std::endl;
-               // Close the upstream connection
-               // evbuf.own(true);
-               // evbuf.free();
-               // bridge_inst->close_upstream();
-               // Close the downstream connection
-               // bridge_inst->downstream_evbuf_.own(true);
-               // bridge_inst->downstream_evbuf_.free();
-               // bridge_inst->close_downstream();
-               bridge_inst->stop();
-            } else if (events & BEV_EVENT_TIMEOUT) {
-               std::cerr << "Error: Upstream connection to " << bridge_inst->upstream_server_.toStringFull() << "TIMEDOUT" << std::endl;
-               // Close the upstream connection
-               // evbuf.own(true);
-               // evbuf.free();
-               // bridge_inst->close_upstream();
-               // Close the downstream connection
-               // bridge_inst->downstream_evbuf_.own(true);
-               // bridge_inst->downstream_evbuf_.free();
-               // bridge_inst->close_downstream();
-               bridge_inst->stop();
             }
          }
 
