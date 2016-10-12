@@ -26,10 +26,12 @@ namespace tcp_proxy
       typedef boost::shared_ptr<bridge> ptr_type;
       typedef boost::weak_ptr<bridge> weak_bridge_ptr_type;
       weak_bridge_ptr_type wbp_;
+      unsigned long num_upstream_connections_;
 
       bridge(EvBaseLoop* evbase, struct evconnlistener* listener,
              evutil_socket_t localhost_fd, IpAddr localhost_address, IpAddr upstream_server)
-         : upstream_server_(upstream_server),
+         : num_upstream_connections_(0),
+           upstream_server_(upstream_server),
            localhost_address_(localhost_address),
            evbase_(evbase), evlis(listener),
            localhost_fd_(localhost_fd),
@@ -55,6 +57,7 @@ namespace tcp_proxy
             }
             upstream_evbuf_.own(true);
             upstream_evbuf_.free();
+            num_upstream_connections_--;
          }
 
       void close_downstream()
@@ -182,7 +185,8 @@ namespace tcp_proxy
                   ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
                   if (events & BEV_EVENT_CONNECTED)
                   {
-                     std::cout << "Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
+                     bridge_inst->num_upstream_connections_++;
+                     std::cout << "US Conn. " << bridge_inst->num_upstream_connections_ << " - Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
                      if(debug)
                         std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst.get() << std::endl;
                      evbuf.setTcpNoDelay();
@@ -291,7 +295,6 @@ namespace tcp_proxy
       EvConnListener evlis;
       evutil_socket_t localhost_fd_;
       int64_t upstream_bytes_read_, downstream_bytes_read_;
-
    public:
 
       class acceptor
