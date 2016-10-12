@@ -169,7 +169,7 @@ namespace tcp_proxy
             sockaddr rem_sock, loc_sock;
             socklen_t len = sizeof(struct sockaddr_in);
             int ret = getpeername(evbuf.getBufEventFd(), &rem_sock, &len);
-            std::cout << "upstream event for fd" << evbuf.getBufEventFd() << std::endl;
+            std::cout << "upstream event for fd" << evbuf.getBufEventFd() << " ; events = " << events << std::endl;
             if(ret == 0) {
                ret = getsockname(evbuf.getBufEventFd(), &loc_sock, &len);
                if(ret == 0) {
@@ -233,10 +233,10 @@ namespace tcp_proxy
                      bridge_inst->stop();
                   }
                } else {
-                     std::cout << strerror(errno) << std::endl;
+                  std::cout << strerror(errno) << "events = " << events << std::endl;
                }
             } else {
-               std::cout << strerror(errno) << std::endl;
+               std::cout << strerror(errno) << "events = " << events << std::endl;
             }
          }
 
