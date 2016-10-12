@@ -169,16 +169,8 @@ namespace tcp_proxy
             int ret = getpeername(evbuf.getBufEventFd(), &rem_sock, &len);
             std::cout << "upstream event for fd" << evbuf.getBufEventFd() << std::endl;
             if(ret == 0) {
-               //    std::cerr << strerror(errno) << std::endl;
-               //    exit(1);
-               // }
-
                ret = getsockname(evbuf.getBufEventFd(), &loc_sock, &len);
                if(ret == 0) {
-                  //    std::cerr << strerror(errno) << std::endl;
-                  //    exit(1);
-                  // }
-
                   IpAddr remote_server(rem_sock);
                   IpAddr local_server(loc_sock);
                   auto bridge_inst_it = ssplice_pending_bridge_ptrs_.find(rem_sock);
@@ -237,7 +229,11 @@ namespace tcp_proxy
                      // bridge_inst->close_downstream();
                      bridge_inst->stop();
                   }
+               } else {
+                     std::cout << strerror(errno) << std::endl;
                }
+            } else {
+               std::cout << strerror(errno) << std::endl;
             }
          }
 
