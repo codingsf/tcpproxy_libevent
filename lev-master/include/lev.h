@@ -35,7 +35,7 @@ extern "C" void event_base_add_virtual(struct event_base *);
 
 namespace lev
 {
-bool debug = false;
+bool debug = true;
 class IpAddr;
 class EvBaseLoop;
 class EvEvent;

@@ -18,7 +18,7 @@ extern "C" {
 using namespace lev;
 namespace tcp_proxy
 {
-   bool debug = false;
+   bool debug = true;
    class bridge : public boost::enable_shared_from_this<bridge>
    {
    public:
@@ -69,17 +69,17 @@ namespace tcp_proxy
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
          {
-            if(debug)
-               std::cout << "In downstream read ";
+            // if(debug)
+            //    std::cout << "In downstream read ";
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
-            if(debug)
-               std::cout << "for connection " << bridge_inst->localhost_address_.toStringFull() << "<->"<< bridge_inst->upstream_server_.toStringFull() << std::endl;
+            // if(debug)
+            //    std::cout << "for connection " << bridge_inst->localhost_address_.toStringFull() << "<->"<< bridge_inst->upstream_server_.toStringFull() << std::endl;
 
             // Copy all the data from the input buffer to the output buffer.
-            if(debug) {
-               std::cout << "Copying buffer of length "  << bridge_inst->downstream_evbuf_.input().length() << "from downstream to upstream " << std::endl;
-            }
+            // if(debug) {
+            //    std::cout << "Copying buffer of length "  << bridge_inst->downstream_evbuf_.input().length() << "from downstream to upstream " << std::endl;
+            // }
             //bridge_inst->upstream_evbuf_.output().append(bridge_inst->downstream_evbuf_.input());
             evbuffer_add_buffer(bufferevent_get_output(bridge_inst->upstream_evbuf_.get_mPtr()),
                                 bufferevent_get_input(bridge_inst->downstream_evbuf_.get_mPtr()));
@@ -88,8 +88,8 @@ namespace tcp_proxy
 
       static void on_downstream_write(struct bufferevent* bev, void* cbarg)
          {
-            if(debug)
-               std::cout << "In downstream write " << std::endl;
+            // if(debug)
+            //    std::cout << "In downstream write " << std::endl;
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
             bridge_inst->upstream_evbuf_.enable(EV_READ);
@@ -139,14 +139,14 @@ namespace tcp_proxy
 
       static void on_upstream_read(struct bufferevent* bev, void* cbarg)
          {
-            if(debug)
-               std::cout << "In upstream read " << std::endl;
+            // if(debug)
+            //    std::cout << "In upstream read " << std::endl;
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
 
             // Copy all the data from the input buffer to the output buffer.
-            if(debug) {
-               std::cout << "Copying buffer of length " << bridge_inst->upstream_evbuf_.input().length() << "from upstream to downstream " << std::endl;
-            }
+            // if(debug) {
+            //    std::cout << "Copying buffer of length " << bridge_inst->upstream_evbuf_.input().length() << "from upstream to downstream " << std::endl;
+            // }
             //bridge_inst->downstream_evbuf_.output().append(bridge_inst->upstream_evbuf_.input());
             evbuffer_add_buffer(bufferevent_get_output(bridge_inst->downstream_evbuf_.get_mPtr()),
                                 bufferevent_get_input(bridge_inst->upstream_evbuf_.get_mPtr()));
@@ -155,8 +155,8 @@ namespace tcp_proxy
 
       static void on_upstream_write(struct bufferevent* bev, void* cbarg)
          {
-            if(debug)
-               std::cout << "In upstream write " << std::endl;
+            // if(debug)
+            //    std::cout << "In upstream write " << std::endl;
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
             bridge_inst->downstream_evbuf_.enable(EV_READ);
          }
