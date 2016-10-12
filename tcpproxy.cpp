@@ -26,12 +26,11 @@ namespace tcp_proxy
       typedef boost::shared_ptr<bridge> ptr_type;
       typedef boost::weak_ptr<bridge> weak_bridge_ptr_type;
       weak_bridge_ptr_type wbp_;
-      unsigned long num_upstream_connections_;
+      static unsigned long num_upstream_connections_;
 
       bridge(EvBaseLoop* evbase, struct evconnlistener* listener,
              evutil_socket_t localhost_fd, IpAddr localhost_address, IpAddr upstream_server)
-         : num_upstream_connections_(0),
-           upstream_server_(upstream_server),
+         : upstream_server_(upstream_server),
            localhost_address_(localhost_address),
            evbase_(evbase), evlis(listener),
            localhost_fd_(localhost_fd),
@@ -185,8 +184,8 @@ namespace tcp_proxy
                   ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
                   if (events & BEV_EVENT_CONNECTED)
                   {
-                     bridge_inst->num_upstream_connections_++;
-                     std::cout << "US Conn. " << bridge_inst->num_upstream_connections_ << " - Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
+                     num_upstream_connections_++;
+                     std::cout << "US Conn. " << num_upstream_connections_ << " - Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
                      if(debug)
                         std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst.get() << std::endl;
                      evbuf.setTcpNoDelay();
@@ -361,6 +360,7 @@ namespace tcp_proxy
 std::multimap<IpAddr, boost::shared_ptr<tcp_proxy::bridge>, IpAddrCompare> tcp_proxy::bridge::ssplice_pending_bridge_ptrs_;
 std::vector<boost::shared_ptr<tcp_proxy::bridge> > tcp_proxy::bridge::acceptor::bridge_instances_;
 long tcp_proxy::bridge::acceptor::num_accepted_connections_ = 0;
+unsigned long tcp_proxy::bridge::num_upstream_connections_ = 0;
 
 void onCtrlC(evutil_socket_t fd, short what, void* arg)
 {
