@@ -27,6 +27,7 @@ namespace tcp_proxy
       typedef boost::weak_ptr<bridge> weak_bridge_ptr_type;
       weak_bridge_ptr_type wbp_;
       static unsigned long num_upstream_connections_;
+      static unsigned long num_downstream_connections_;
 
       bridge(EvBaseLoop* evbase, struct evconnlistener* listener,
              evutil_socket_t localhost_fd, IpAddr localhost_address, IpAddr upstream_server)
@@ -37,8 +38,16 @@ namespace tcp_proxy
            upstream_bytes_read_(0),
            downstream_bytes_read_(0)
          {
-            if(debug)
+            if(debug) {
                std::cout << "Bridge: "<< this << "localhost fd = " << localhost_fd_;
+               this->num_downstream_connections_++;
+               sockaddr loc_sock, rem_sock;
+               socklen_t len = sizeof(struct sockaddr_in);
+               getpeername(localhost_fd, &rem_sock, &len);
+               getsockname(localhost_fd, &loc_sock, &len);
+               IpAddr loc_ep(loc_sock), rem_ep(rem_sock);
+               std::cout << __FUNCTION__ << "num_downstream_connections = " << num_downstream_connections_ << " " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull() << " ";
+            }
          }
 
       ~bridge()
@@ -57,6 +66,9 @@ namespace tcp_proxy
             upstream_evbuf_.own(true);
             upstream_evbuf_.free();
             num_upstream_connections_--;
+            if(debug) {
+               std::cout << __FUNCTION__ << ":num_upstream_connections = " << num_upstream_connections_ << std::endl;
+            }
          }
 
       void close_downstream()
@@ -67,6 +79,10 @@ namespace tcp_proxy
             }
             downstream_evbuf_.own(true);
             downstream_evbuf_.free();
+            num_downstream_connections_--;
+            if(debug) {
+               std::cout << __FUNCTION__ << ":num_downstream_connections = " << num_downstream_connections_ << std::endl;
+            }
          }
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
@@ -328,14 +344,16 @@ namespace tcp_proxy
          static void onAccept(struct evconnlistener* listener, evutil_socket_t listener_fd, struct sockaddr* address,
                               int socklen, void* cbarg)
             {
-               sockaddr loc_sock, rem_sock;
-               socklen_t len = sizeof(struct sockaddr_in);
-               getpeername(listener_fd, &rem_sock, &len);
-               getsockname(listener_fd, &loc_sock, &len);
-               IpAddr loc_ep(loc_sock), rem_ep(rem_sock);
+               // sockaddr loc_sock, rem_sock;
+               // socklen_t len = sizeof(struct sockaddr_in);
+               // getpeername(listener_fd, &rem_sock, &len);
+               // getsockname(listener_fd, &loc_sock, &len);
+               // IpAddr loc_ep(loc_sock), rem_ep(rem_sock);
 
-               num_accepted_connections_++;
-               std::cout << "Conn. " << num_accepted_connections_ << " " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull() << " ";
+               // //num_downstream_connections_++;
+               // if(debug) {
+               //    std::cout << "Accepted connection: " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull() << " ";
+               // }
                acceptor *acceptor_inst = static_cast<acceptor *>(cbarg);
                ptr_type p = boost::shared_ptr<bridge>(new bridge(acceptor_inst->evbase_, listener, listener_fd,
                                                                  acceptor_inst->localhost_address_,
@@ -346,7 +364,6 @@ namespace tcp_proxy
                   std::cout << " ; loc fd = " << listener_fd << "; bridge ptr = " << p.get() << std::endl;
                p->start();
             }
-         static long num_accepted_connections_;
       private:
          //ptr_type bridge_session_;
          EvBaseLoop* evbase_;
@@ -359,7 +376,7 @@ namespace tcp_proxy
 
 std::multimap<IpAddr, boost::shared_ptr<tcp_proxy::bridge>, IpAddrCompare> tcp_proxy::bridge::ssplice_pending_bridge_ptrs_;
 std::vector<boost::shared_ptr<tcp_proxy::bridge> > tcp_proxy::bridge::acceptor::bridge_instances_;
-long tcp_proxy::bridge::acceptor::num_accepted_connections_ = 0;
+unsigned long tcp_proxy::bridge::num_downstream_connections_ = 0;
 unsigned long tcp_proxy::bridge::num_upstream_connections_ = 0;
 
 void onCtrlC(evutil_socket_t fd, short what, void* arg)
