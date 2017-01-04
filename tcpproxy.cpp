@@ -39,14 +39,14 @@ namespace tcp_proxy
            downstream_bytes_read_(0)
          {
             if(debug) {
-               std::cout << "Bridge: "<< this << "localhost fd = " << localhost_fd_;
+               std::cout << "Bridge: "<< this << "localhost fd = " << localhost_fd_ << std::endl;
                this->num_downstream_connections_++;
                sockaddr loc_sock, rem_sock;
                socklen_t len = sizeof(struct sockaddr_in);
                getpeername(localhost_fd, &rem_sock, &len);
                getsockname(localhost_fd, &loc_sock, &len);
                IpAddr loc_ep(loc_sock), rem_ep(rem_sock);
-               std::cout << __FUNCTION__ << "num_downstream_connections = " << num_downstream_connections_ << " " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull() << " ";
+               std::cout << __FUNCTION__ << "num_downstream_connections = " << num_downstream_connections_ << " " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull() << " " << std::endl;
             }
          }
 
@@ -196,9 +196,10 @@ namespace tcp_proxy
                      std::cerr << "Could not find a bridge for upstream_server " << remote_server.toStringFull() << std::endl;
                      exit(1);
                   }
-                  //ptr_type bridge_inst = bridge_inst_it->second;
-                  bridge* b = static_cast<bridge *>(cbarg);
-                  ptr_type bridge_inst = boost::shared_ptr<bridge>(b);
+
+                  ptr_type bridge_inst = bridge_inst_it->second;
+                  // bridge* b = static_cast<bridge *>(cbarg);
+                  // ptr_type bridge_inst = boost::shared_ptr<bridge>(b);
                   ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
                   if(debug)
                      std::cout << __FUNCTION__ << ":ssplice_pending_bridge_ptrs.size() = " << ssplice_pending_bridge_ptrs_.size() << std::endl;
