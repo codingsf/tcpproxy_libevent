@@ -211,6 +211,7 @@ namespace tcp_proxy
                      {
                         bridge_inst->downstream_evbuf_.enable(EV_READ | EV_WRITE);
                         bridge_inst->downstream_evbuf_.setTcpNoDelay();
+                        bridge_inst->downstream_evbuf_.setTcpKeepAlive();
                         bridge_inst->downstream_evbuf_.own(false);
                         if(debug) {
                            std::cout << "Enabled downstream_evbuf ";
@@ -222,6 +223,7 @@ namespace tcp_proxy
                      bridge_inst->upstream_evbuf_.enable(EV_READ);
                      bridge_inst->upstream_evbuf_.enable(EV_WRITE);
                      bridge_inst->upstream_evbuf_.setTcpNoDelay();
+                     bridge_inst->upstream_evbuf_.setTcpKeepAlive();
                      bridge_inst->upstream_evbuf_.own(false);
                      if(debug)
                         std::cout << "Enabled upstream_evbuf and reset its callbacks" << std::endl;

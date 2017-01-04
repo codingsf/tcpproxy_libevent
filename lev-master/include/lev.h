@@ -470,6 +470,11 @@ public:
         setsockopt(bufferevent_getfd(mPtr), IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     }
 
+    void setTcpKeepAlive()
+    {
+        int one = 1;
+        setsockopt(bufferevent_getfd(mPtr), SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
+    }
     int getBufEventFd()
     {
         return bufferevent_getfd(mPtr);
