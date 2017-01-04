@@ -196,8 +196,12 @@ namespace tcp_proxy
                      std::cerr << "Could not find a bridge for upstream_server " << remote_server.toStringFull() << std::endl;
                      exit(1);
                   }
-                  ptr_type bridge_inst = bridge_inst_it->second;
+                  //ptr_type bridge_inst = bridge_inst_it->second;
+                  bridge* b = static_cast<bridge *>(cbarg);
+                  ptr_type bridge_inst = boost::shared_ptr<bridge>(b);
                   ssplice_pending_bridge_ptrs_.erase(bridge_inst_it);
+                  if(debug)
+                     std::cout << __FUNCTION__ << ":ssplice_pending_bridge_ptrs.size() = " << ssplice_pending_bridge_ptrs_.size() << std::endl;
                   if (events & BEV_EVENT_CONNECTED)
                   {
                      num_upstream_connections_++;
@@ -281,6 +285,8 @@ namespace tcp_proxy
                stop();
             } else {
                ssplice_pending_bridge_ptrs_.insert(std::pair<IpAddr, ptr_type> (upstream_server_, p));
+               if(debug)
+                  std::cout << __FUNCTION__ << ":ssplice_pending_bridge_ptrs.size() = " << ssplice_pending_bridge_ptrs_.size() << std::endl;
                if (upstream_evbuf_.newForSocket(-1, on_upstream_read, on_upstream_write,
                                                 on_upstream_event, (void*)this, evbase_->base()))
                {
