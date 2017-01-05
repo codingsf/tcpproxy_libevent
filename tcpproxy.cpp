@@ -29,11 +29,11 @@ namespace tcp_proxy
       static unsigned long num_upstream_connections_;
       static unsigned long num_downstream_connections_;
 
-      bridge(EvBaseLoop* evbase, struct evconnlistener* listener,
+      bridge(struct event_base* evbase, struct evconnlistener* listener,
              evutil_socket_t localhost_fd, IpAddr localhost_address, IpAddr upstream_server)
          : upstream_server_(upstream_server),
            localhost_address_(localhost_address),
-           evbase_(evbase), evlis(listener),
+           evbase_(evbase), evlis_(listener),
            localhost_fd_(localhost_fd),
            upstream_bytes_read_(0),
            downstream_bytes_read_(0)
@@ -46,7 +46,7 @@ namespace tcp_proxy
                getpeername(localhost_fd, &rem_sock, &len);
                getsockname(localhost_fd, &loc_sock, &len);
                IpAddr loc_ep(loc_sock), rem_ep(rem_sock);
-               std::cout << __FUNCTION__ << "num_downstream_connections = " << num_downstream_connections_ << " " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull() << " " << std::endl;
+               std::cout << __FUNCTION__ << ": num_downstream_connections = " << num_downstream_connections_ << " " << rem_ep.toStringFull() << "<-->" << loc_ep.toStringFull() << " " << std::endl;
             }
          }
 
@@ -63,8 +63,9 @@ namespace tcp_proxy
             if(debug) {
                std::cout << "In close_upstream for bridge " << this << std::endl;
             }
-            upstream_evbuf_.own(true);
-            upstream_evbuf_.free();
+            //upstream_evbuf_.own(true);
+            //upstream_evbuf_.free();
+            bufferevent_free(upstream_evbuf_);
             num_upstream_connections_--;
             if(debug) {
                std::cout << __FUNCTION__ << ":num_upstream_connections = " << num_upstream_connections_ << std::endl;
@@ -77,11 +78,12 @@ namespace tcp_proxy
             if(debug) {
                std::cout << "In close_downstream for bridge " << this << std::endl;
             }
-            downstream_evbuf_.own(true);
-            downstream_evbuf_.free();
+            //downstream_evbuf_.own(true);
+            //downstream_evbuf_.free();
+            bufferevent_free(downstream_evbuf_);
             num_downstream_connections_--;
             if(debug) {
-               std::cout << __FUNCTION__ << ":num_downstream_connections = " << num_downstream_connections_ << std::endl;
+               std::cout << __FUNCTION__ << ": num_downstream_connections = " << num_downstream_connections_ << std::endl;
             }
          }
 
@@ -99,9 +101,12 @@ namespace tcp_proxy
             //    std::cout << "Copying buffer of length "  << bridge_inst->downstream_evbuf_.input().length() << "from downstream to upstream " << std::endl;
             // }
             //bridge_inst->upstream_evbuf_.output().append(bridge_inst->downstream_evbuf_.input());
-            evbuffer_add_buffer(bufferevent_get_output(bridge_inst->upstream_evbuf_.get_mPtr()),
-                                bufferevent_get_input(bridge_inst->downstream_evbuf_.get_mPtr()));
-            bridge_inst->downstream_evbuf_.disable(EV_READ);
+            // evbuffer_add_buffer(bufferevent_get_output(bridge_inst->upstream_evbuf_.get_mPtr()),
+            //                     bufferevent_get_input(bridge_inst->downstream_evbuf_.get_mPtr()));
+            evbuffer_add_buffer(bufferevent_get_output(bridge_inst->upstream_evbuf_),
+                                bufferevent_get_input(bridge_inst->downstream_evbuf_));
+            //bridge_inst->downstream_evbuf_.disable(EV_READ);
+            bufferevent_disable(bridge_inst->upstream_evbuf_, EV_READ);
          }
 
       static void on_downstream_write(struct bufferevent* bev, void* cbarg)
@@ -110,12 +115,13 @@ namespace tcp_proxy
             //    std::cout << "In downstream write " << std::endl;
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
-            bridge_inst->upstream_evbuf_.enable(EV_READ);
+            //bridge_inst->upstream_evbuf_.enable(EV_READ);
+            bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ);
          }
 
       static void on_downstream_event(struct bufferevent* bev, short events, void* cbarg)
          {
-            EvBufferEvent evbuf(bev);
+            //EvBufferEvent evbuf(bev);
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
             if (events & BEV_EVENT_ERROR)
@@ -166,9 +172,12 @@ namespace tcp_proxy
             //    std::cout << "Copying buffer of length " << bridge_inst->upstream_evbuf_.input().length() << "from upstream to downstream " << std::endl;
             // }
             //bridge_inst->downstream_evbuf_.output().append(bridge_inst->upstream_evbuf_.input());
-            evbuffer_add_buffer(bufferevent_get_output(bridge_inst->downstream_evbuf_.get_mPtr()),
-                                bufferevent_get_input(bridge_inst->upstream_evbuf_.get_mPtr()));
-            bridge_inst->upstream_evbuf_.disable(EV_READ);
+            // evbuffer_add_buffer(bufferevent_get_output(bridge_inst->downstream_evbuf_.get_mPtr()),
+            //                     bufferevent_get_input(bridge_inst->upstream_evbuf_.get_mPtr()));
+            evbuffer_add_buffer(bufferevent_get_output(bridge_inst->downstream_evbuf_),
+                                bufferevent_get_input(bridge_inst->upstream_evbuf_));
+            //bridge_inst->upstream_evbuf_.disable(EV_READ);
+            bufferevent_disable(bridge_inst->upstream_evbuf_, EV_READ);
          }
 
       static void on_upstream_write(struct bufferevent* bev, void* cbarg)
@@ -176,18 +185,19 @@ namespace tcp_proxy
             // if(debug)
             //    std::cout << "In upstream write " << std::endl;
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
-            bridge_inst->downstream_evbuf_.enable(EV_READ);
+            //bridge_inst->downstream_evbuf_.enable(EV_READ);
+            bufferevent_enable(bridge_inst->downstream_evbuf_, EV_READ);
          }
 
       static void on_upstream_event(struct bufferevent* bev, short events, void* cbarg)
          {
-            EvBufferEvent evbuf(bev);
+            //EvBufferEvent evbuf(bev);
             sockaddr rem_sock, loc_sock;
             socklen_t len = sizeof(struct sockaddr_in);
-            int ret = getpeername(evbuf.getBufEventFd(), &rem_sock, &len);
-            std::cout << "upstream event for fd" << evbuf.getBufEventFd() << " ; events = " << events << std::endl;
+            int ret = getpeername(bufferevent_getfd(bev), &rem_sock, &len);
+            std::cout << "upstream event for fd" << bufferevent_getfd(bev) << " ; events = " << events << std::endl;
             if(ret == 0) {
-               ret = getsockname(evbuf.getBufEventFd(), &loc_sock, &len);
+               ret = getsockname(bufferevent_getfd(bev), &loc_sock, &len);
                if(ret == 0) {
                   IpAddr remote_server(rem_sock);
                   IpAddr local_server(loc_sock);
@@ -208,28 +218,67 @@ namespace tcp_proxy
                      num_upstream_connections_++;
                      std::cout << "US Conn. " << num_upstream_connections_ << " - Connected to upstream (" << local_server.toStringFull() << "<-->" << remote_server.toStringFull() << ")" << std::endl;
                      if(debug)
-                        std::cout << "; upstream fd= " << evbuf.getBufEventFd() << "; bridge ptr: "<< bridge_inst.get() << std::endl;
-                     evbuf.setTcpNoDelay();
+                        std::cout << "; upstream fd= " << bufferevent_getfd(bev) << "; bridge ptr: "<< bridge_inst.get() << std::endl;
+                     //evbuf.setTcpNoDelay();
+                     int one = 1;
+                     setsockopt(bufferevent_getfd(bev), IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
                      //set the call backs for downstream and upstream
-                     if (bridge_inst->downstream_evbuf_.newForSocket(bridge_inst->localhost_fd_, on_downstream_read, on_downstream_write,
-                                                                     on_downstream_event, (void *)bridge_inst.get(), bridge_inst->evbase_->base()))
+                     // if (bridge_inst->downstream_evbuf_.newForSocket(bridge_inst->localhost_fd_, on_downstream_read, on_downstream_write,
+                     //                                                 on_downstream_event, (void *)bridge_inst.get(), bridge_inst->evbase_->base()))
+                     // {
+                     //    bridge_inst->downstream_evbuf_.enable(EV_READ | EV_WRITE);
+                     //    bridge_inst->downstream_evbuf_.setTcpNoDelay();
+                     //    bridge_inst->downstream_evbuf_.setTcpKeepAlive();
+                     //    bridge_inst->downstream_evbuf_.own(false);
+                     //    if(debug) {
+                     //       std::cout << "Enabled downstream_evbuf ";
+                     //       std::cout << "; downstream fd = " << bridge_inst->downstream_evbuf_.getBufEventFd() << std::endl;
+                     //    }
+                     // }
+
+                     bridge_inst->downstream_evbuf_ = bufferevent_socket_new(bridge_inst->evbase_, bridge_inst->localhost_fd_, BEV_OPT_CLOSE_ON_FREE);
+                     if (bridge_inst->downstream_evbuf_ == NULL)
                      {
-                        bridge_inst->downstream_evbuf_.enable(EV_READ | EV_WRITE);
-                        bridge_inst->downstream_evbuf_.setTcpNoDelay();
-                        bridge_inst->downstream_evbuf_.setTcpKeepAlive();
-                        bridge_inst->downstream_evbuf_.own(false);
-                        if(debug) {
-                           std::cout << "Enabled downstream_evbuf ";
-                           std::cout << "; downstream fd = " << bridge_inst->downstream_evbuf_.getBufEventFd() << std::endl;
-                        }
+                        std::cerr <<"Failed to create libevent buffer event" << std::endl;
+                        return;
                      }
 
-                     bridge_inst->upstream_evbuf_.set_cb(on_upstream_read, on_upstream_write, on_upstream_event, (void*)bridge_inst.get());
-                     bridge_inst->upstream_evbuf_.enable(EV_READ);
-                     bridge_inst->upstream_evbuf_.enable(EV_WRITE);
-                     bridge_inst->upstream_evbuf_.setTcpNoDelay();
-                     bridge_inst->upstream_evbuf_.setTcpKeepAlive();
-                     bridge_inst->upstream_evbuf_.own(false);
+                     bufferevent_setcb(bridge_inst->downstream_evbuf_, on_downstream_read, on_downstream_write,
+                                       on_downstream_event, (void *)bridge_inst.get());
+                     bufferevent_enable(bridge_inst->downstream_evbuf_, EV_READ | EV_WRITE);
+                     one = 1;
+                     setsockopt(bufferevent_getfd(bridge_inst->downstream_evbuf_), IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+                     setsockopt(bufferevent_getfd(bridge_inst->downstream_evbuf_), SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
+                     if(debug) {
+                        std::cout << "Enabled downstream_evbuf ";
+                        std::cout << "; downstream fd = " << bufferevent_getfd(bridge_inst->downstream_evbuf_) << std::endl;
+                     }
+
+                     // if (bridge_inst->downstream_evbuf_.newForSocket(bridge_inst->localhost_fd_, on_downstream_read, on_downstream_write,
+                     //                                                 on_downstream_event, (void *)bridge_inst.get(), bridge_inst->evbase_->base()))
+                     // {
+                     //    bridge_inst->downstream_evbuf_.enable(EV_READ | EV_WRITE);
+                     //    bridge_inst->downstream_evbuf_.setTcpNoDelay();
+                     //    bridge_inst->downstream_evbuf_.setTcpKeepAlive();
+                     //    bridge_inst->downstream_evbuf_.own(false);
+                     //    if(debug) {
+                     //       std::cout << "Enabled downstream_evbuf ";
+                     //       std::cout << "; downstream fd = " << bridge_inst->downstream_evbuf_.getBufEventFd() << std::endl;
+                     //    }
+                     // }
+
+                     // bridge_inst->upstream_evbuf_.set_cb(on_upstream_read, on_upstream_write, on_upstream_event, (void*)bridge_inst.get());
+                     // bridge_inst->upstream_evbuf_.enable(EV_READ);
+                     // bridge_inst->upstream_evbuf_.enable(EV_WRITE);
+                     // bridge_inst->upstream_evbuf_.setTcpNoDelay();
+                     // bridge_inst->upstream_evbuf_.setTcpKeepAlive();
+                     // bridge_inst->upstream_evbuf_.own(false);
+                     bufferevent_setcb(bridge_inst->upstream_evbuf_, on_upstream_read, on_upstream_write,
+                                       on_upstream_event, (void *)bridge_inst.get());
+                     bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ | EV_WRITE);
+                     one = 1;
+                     setsockopt(bufferevent_getfd(bridge_inst->upstream_evbuf_), IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+                     setsockopt(bufferevent_getfd(bridge_inst->upstream_evbuf_), SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
                      if(debug)
                         std::cout << "Enabled upstream_evbuf and reset its callbacks" << std::endl;
                   } else if (events & BEV_EVENT_ERROR) {
@@ -288,20 +337,38 @@ namespace tcp_proxy
                ssplice_pending_bridge_ptrs_.insert(std::pair<IpAddr, ptr_type> (upstream_server_, p));
                if(debug)
                   std::cout << __FUNCTION__ << ":ssplice_pending_bridge_ptrs.size() = " << ssplice_pending_bridge_ptrs_.size() << std::endl;
-               if (upstream_evbuf_.newForSocket(-1, on_upstream_read, on_upstream_write,
-                                                on_upstream_event, (void*)this, evbase_->base()))
+               upstream_evbuf_ = bufferevent_socket_new(evbase_, -1, BEV_OPT_CLOSE_ON_FREE);
+               if (upstream_evbuf_ == NULL)
                {
-                  if(debug) {
-                     std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_.get_mPtr() << ") ";
-                     std::cout << "for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull();
-                     std::cout << "; bridge ptr= " << this << std::endl;
-                  }
-                  upstream_evbuf_.disable(EV_READ);
-                  upstream_evbuf_.disable(EV_WRITE);
+                  std::cerr <<"Failed to create libevent buffer event" << std::endl;
+                  return;
                }
 
+               bufferevent_setcb(upstream_evbuf_, on_upstream_read, on_upstream_write,
+                                 on_upstream_event, (void*)this);
+
+               bufferevent_disable(upstream_evbuf_, EV_READ | EV_WRITE);
+               if(debug) {
+                  //std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_.get_mPtr() << ") ";
+                  std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_ << ") ";
+                  std::cout << "for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull();
+                  std::cout << "; bridge ptr= " << this << std::endl;
+               }
+               // if (upstream_evbuf_.newForSocket(-1, on_upstream_read, on_upstream_write,
+               //                                  on_upstream_event, (void*)this, evbase_->base()))
+               // {
+               //    if(debug) {
+               //       std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_.get_mPtr() << ") ";
+               //       std::cout << "for connection " << localhost_address_.toStringFull() << "<->"<< upstream_server_.toStringFull();
+               //       std::cout << "; bridge ptr= " << this << std::endl;
+               //    }
+               //    upstream_evbuf_.disable(EV_READ);
+               //    upstream_evbuf_.disable(EV_WRITE);
+               // }
+
                // Connect
-               if (!upstream_evbuf_.connect(upstream_server_))
+               // if (!upstream_evbuf_.connect(upstream_server_))
+               if (bufferevent_socket_connect(upstream_evbuf_, (sockaddr*)upstream_server_.addr(), upstream_server_.addrLen()) != 0)
                {
                   std::cerr << "Error: Client failed to connect to " << upstream_server_.toStringFull() << std::endl;
                } else {
@@ -314,9 +381,12 @@ namespace tcp_proxy
    private:
       IpAddr upstream_server_;
       IpAddr localhost_address_;
-      EvBaseLoop* evbase_;
-      EvBufferEvent upstream_evbuf_, downstream_evbuf_;
-      EvConnListener evlis;
+      //EvBaseLoop* evbase_;
+      struct event_base* evbase_;
+      //EvBufferEvent upstream_evbuf_, downstream_evbuf_;
+      struct bufferevent *upstream_evbuf_, *downstream_evbuf_;
+      //EvConnListener evlis;
+      struct evconnlistener* evlis_;
       evutil_socket_t localhost_fd_;
       int64_t upstream_bytes_read_, downstream_bytes_read_;
    public:
@@ -325,10 +395,10 @@ namespace tcp_proxy
       {
       public:
          static std::vector<ptr_type> bridge_instances_;
-         acceptor(EvBaseLoop* evbase, const std::string& local_host, unsigned short local_port,
+         acceptor(struct event_base* evbase, const std::string& local_host, unsigned short local_port,
                   const std::string& upstream_host, unsigned short upstream_port)
             : evbase_(evbase), upstream_server_(upstream_host.c_str(), upstream_port),
-              localhost_address_(local_host.c_str(), local_port)
+              localhost_address_(local_host.c_str(), local_port), listener_(NULL)
             {}
 
          ~acceptor()
@@ -341,9 +411,16 @@ namespace tcp_proxy
                try
                {
                   std::cout << "Waiting to accept connections" << std::endl << std::endl;
-                  listener_.newListener(localhost_address_, onAccept,
-                                        (void *)this, evbase_->base());
-                  evbase_->loop();
+                  // listener_.newListener(localhost_address_, onAccept,
+                  //                       (void *)this, evbase_->base());
+                  listener_ = evconnlistener_new_bind(evbase_, onAccept, this, LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, -1,
+                                                      localhost_address_.addr(), localhost_address_.addrLen());
+                  if(!listener_) {
+                     std::cerr << "acceptor exception: " << std::endl;
+                     return false;
+                  }
+                  //evbase_->loop();
+                  event_base_loop(evbase_, 0);
                } catch(std::exception& e) {
                   std::cerr << "acceptor exception: " << e.what() << std::endl;
                   return false;
@@ -375,10 +452,12 @@ namespace tcp_proxy
             }
       private:
          //ptr_type bridge_session_;
-         EvBaseLoop* evbase_;
+         //EvBaseLoop* evbase_;
+         struct event_base* evbase_;
          IpAddr upstream_server_;
          IpAddr localhost_address_;
-         EvConnListener listener_;
+         //EvConnListener listener_;
+         struct evconnlistener* listener_;
       };
    };
 }
@@ -407,7 +486,8 @@ int main(int argc, char* argv[])
       std::cerr << "usage: tcpproxy <local host ip> <local port> <forward host ip> <forward port> <debug-true/false>" << std::endl;
       return 1;
    }
-   EvBaseLoop evbase;
+   //EvBaseLoop evbase;
+   struct event_base* evbase = event_base_new();
    const unsigned short local_port   = static_cast<unsigned short>(::atoi(argv[2]));
    const unsigned short forward_port = static_cast<unsigned short>(::atoi(argv[4]));
    const std::string local_host      = argv[1];
@@ -415,17 +495,21 @@ int main(int argc, char* argv[])
    debug = boost::lexical_cast<bool>(argv[5]);
 
    signal(SIGPIPE, SIG_IGN);
-   EvEvent ctrlc;
-   ctrlc.newSignal(onCtrlC, SIGINT, evbase);
-   ctrlc.start();
+   //EvEvent ctrlc;
+   struct event *evnt_ctrlc = event_new(evbase, SIGINT, EV_PERSIST | EV_SIGNAL, onCtrlC, NULL);
+   event_add(evnt_ctrlc, NULL);
+   //ctrlc.newSignal(onCtrlC, SIGINT, evbase);
+   //ctrlc.start();
 
-   EvEvent evstop;
-   evstop.newSignal(onCtrlC, SIGHUP, evbase);
-   evstop.start();
+   // EvEvent evstop;
+   // evstop.newSignal(onCtrlC, SIGHUP, evbase);
+   // evstop.start();
+   struct event *evnt_stop = event_new(evbase, SIGHUP, EV_PERSIST | EV_SIGNAL, onCtrlC, NULL);
+   event_add(evnt_stop, NULL);
 
    try
    {
-      tcp_proxy::bridge::acceptor acceptor(&evbase,
+      tcp_proxy::bridge::acceptor acceptor(evbase,
                                            local_host, local_port,
                                            forward_host, forward_port);
       std::cout << "Created acceptor object @ " << &acceptor << std::endl;
@@ -433,8 +517,10 @@ int main(int argc, char* argv[])
    } catch(std::exception& e)
    {
       std::cerr << "Error: " << e.what() << std::endl;
+      event_base_free(evbase);
       return 1;
    }
+   event_base_free(evbase);
 }
 
 /*
