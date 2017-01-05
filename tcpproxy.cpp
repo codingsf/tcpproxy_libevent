@@ -109,7 +109,7 @@ namespace tcp_proxy
             evbuffer_add_buffer(bufferevent_get_output(bridge_inst->upstream_evbuf_),
                                 bufferevent_get_input(bridge_inst->downstream_evbuf_));
             //bridge_inst->downstream_evbuf_.disable(EV_READ);
-            bufferevent_disable(bridge_inst->upstream_evbuf_, EV_READ);
+            bufferevent_disable(bridge_inst->downstream_evbuf_, EV_READ);
          }
 
       static void on_downstream_write(struct bufferevent* bev, void* cbarg)
