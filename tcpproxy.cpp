@@ -92,8 +92,8 @@ namespace tcp_proxy
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
          {
-            if(debug)
-               std::cout << "In downstream read ";
+            // if(debug)
+            //    std::cout << "In downstream read ";
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
             // if(debug)
@@ -114,8 +114,8 @@ namespace tcp_proxy
 
       static void on_downstream_write(struct bufferevent* bev, void* cbarg)
          {
-            if(debug)
-               std::cout << "In downstream write " << std::endl;
+            // if(debug)
+            //    std::cout << "In downstream write " << std::endl;
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
             //bridge_inst->upstream_evbuf_.enable(EV_READ);
@@ -166,8 +166,8 @@ namespace tcp_proxy
 
       static void on_upstream_read(struct bufferevent* bev, void* cbarg)
          {
-            if(debug)
-               std::cout << "In upstream read " << std::endl;
+            // if(debug)
+            //    std::cout << "In upstream read " << std::endl;
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
 
             // Copy all the data from the input buffer to the output buffer.
@@ -185,8 +185,8 @@ namespace tcp_proxy
 
       static void on_upstream_write(struct bufferevent* bev, void* cbarg)
          {
-            if(debug)
-               std::cout << "In upstream write " << std::endl;
+            // if(debug)
+            //    std::cout << "In upstream write " << std::endl;
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
             //bridge_inst->downstream_evbuf_.enable(EV_READ);
             bufferevent_enable(bridge_inst->downstream_evbuf_, EV_READ);
@@ -355,6 +355,8 @@ namespace tcp_proxy
                                  on_upstream_event, (void*)this);
 
                //bufferevent_disable(upstream_evbuf_, EV_READ | EV_WRITE);
+               bufferevent_disable(upstream_evbuf_, EV_READ);
+               bufferevent_disable(upstream_evbuf_, EV_READ);
                if(debug) {
                   //std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_.get_mPtr() << ") ";
                   std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_ << ") ";
