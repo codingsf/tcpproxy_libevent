@@ -282,7 +282,7 @@ namespace tcp_proxy
                                        on_upstream_event, (void *)bridge_inst.get());
                      //bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ | EV_WRITE);
                      bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ);
-                     bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ);
+                     bufferevent_enable(bridge_inst->upstream_evbuf_, EV_WRITE);
                      one = 1;
                      setsockopt(bufferevent_getfd(bridge_inst->upstream_evbuf_), IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
                      setsockopt(bufferevent_getfd(bridge_inst->upstream_evbuf_), SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
@@ -354,7 +354,7 @@ namespace tcp_proxy
                bufferevent_setcb(upstream_evbuf_, on_upstream_read, on_upstream_write,
                                  on_upstream_event, (void*)this);
 
-               bufferevent_disable(upstream_evbuf_, EV_READ | EV_WRITE);
+               //bufferevent_disable(upstream_evbuf_, EV_READ | EV_WRITE);
                if(debug) {
                   //std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_.get_mPtr() << ") ";
                   std::cout << "Created upstream_eventbuf_ (evlistener = )" << upstream_evbuf_ << ") ";
