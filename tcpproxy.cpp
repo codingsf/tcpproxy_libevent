@@ -33,7 +33,10 @@ namespace tcp_proxy
              evutil_socket_t localhost_fd, IpAddr localhost_address, IpAddr upstream_server)
          : upstream_server_(upstream_server),
            localhost_address_(localhost_address),
-           evbase_(evbase), evlis_(listener),
+           evbase_(evbase),
+           upstream_evbuf_(NULL),
+           downstream_evbuf_(NULL),
+           evlis_(listener),
            localhost_fd_(localhost_fd),
            upstream_bytes_read_(0),
            downstream_bytes_read_(0)
@@ -89,8 +92,8 @@ namespace tcp_proxy
 
       static void on_downstream_read(struct bufferevent* bev, void* cbarg)
          {
-            // if(debug)
-            //    std::cout << "In downstream read ";
+            if(debug)
+               std::cout << "In downstream read ";
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
             // if(debug)
@@ -111,8 +114,8 @@ namespace tcp_proxy
 
       static void on_downstream_write(struct bufferevent* bev, void* cbarg)
          {
-            // if(debug)
-            //    std::cout << "In downstream write " << std::endl;
+            if(debug)
+               std::cout << "In downstream write " << std::endl;
             bridge *bridge_inst = static_cast<bridge *>(cbarg);
 
             //bridge_inst->upstream_evbuf_.enable(EV_READ);
@@ -163,8 +166,8 @@ namespace tcp_proxy
 
       static void on_upstream_read(struct bufferevent* bev, void* cbarg)
          {
-            // if(debug)
-            //    std::cout << "In upstream read " << std::endl;
+            if(debug)
+               std::cout << "In upstream read " << std::endl;
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
 
             // Copy all the data from the input buffer to the output buffer.
@@ -182,8 +185,8 @@ namespace tcp_proxy
 
       static void on_upstream_write(struct bufferevent* bev, void* cbarg)
          {
-            // if(debug)
-            //    std::cout << "In upstream write " << std::endl;
+            if(debug)
+               std::cout << "In upstream write " << std::endl;
             bridge* bridge_inst = static_cast<bridge *>(cbarg);
             //bridge_inst->downstream_evbuf_.enable(EV_READ);
             bufferevent_enable(bridge_inst->downstream_evbuf_, EV_READ);
@@ -245,7 +248,9 @@ namespace tcp_proxy
 
                      bufferevent_setcb(bridge_inst->downstream_evbuf_, on_downstream_read, on_downstream_write,
                                        on_downstream_event, (void *)bridge_inst.get());
-                     bufferevent_enable(bridge_inst->downstream_evbuf_, EV_READ | EV_WRITE);
+                     //bufferevent_enable(bridge_inst->downstream_evbuf_, EV_READ | EV_WRITE);
+                     bufferevent_enable(bridge_inst->downstream_evbuf_, EV_READ);
+                     bufferevent_enable(bridge_inst->downstream_evbuf_, EV_WRITE);
                      one = 1;
                      setsockopt(bufferevent_getfd(bridge_inst->downstream_evbuf_), IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
                      setsockopt(bufferevent_getfd(bridge_inst->downstream_evbuf_), SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
@@ -275,7 +280,9 @@ namespace tcp_proxy
                      // bridge_inst->upstream_evbuf_.own(false);
                      bufferevent_setcb(bridge_inst->upstream_evbuf_, on_upstream_read, on_upstream_write,
                                        on_upstream_event, (void *)bridge_inst.get());
-                     bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ | EV_WRITE);
+                     //bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ | EV_WRITE);
+                     bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ);
+                     bufferevent_enable(bridge_inst->upstream_evbuf_, EV_READ);
                      one = 1;
                      setsockopt(bufferevent_getfd(bridge_inst->upstream_evbuf_), IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
                      setsockopt(bufferevent_getfd(bridge_inst->upstream_evbuf_), SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
